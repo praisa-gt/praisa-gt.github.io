@@ -55,11 +55,11 @@ button:disabled{opacity:.6;cursor:wait}
       <div><label for="apellido">Apellido <em>*</em></label><input id="apellido" name="apellido" autocomplete="family-name" required></div>
     </div>
     <label for="empresa">Empresa <em>*</em></label><input id="empresa" name="empresa" autocomplete="organization" required>
-    <label for="nit">NIT de la empresa <small>(opcional)</small></label><input id="nit" name="nit">
+    <label for="nit">NIT de la empresa <em>*</em></label><input id="nit" name="nit" inputmode="text" autocomplete="off" placeholder="Ej: 1234567-8" required>
     <label for="puesto">Puesto / cargo <em>*</em></label><input id="puesto" name="puesto" autocomplete="organization-title" required>
     <label for="correo">Correo electrónico <em>*</em></label><input id="correo" name="correo" type="email" autocomplete="email" required>
     <label for="telefono">Teléfono o WhatsApp <em>*</em></label><input id="telefono" name="telefono" type="tel" autocomplete="tel" required>
-    <label for="direccion">Dirección / ciudad</label><input id="direccion" name="direccion" autocomplete="address-level2">
+    <label for="direccion">Dirección / ciudad <em>*</em></label><input id="direccion" name="direccion" autocomplete="address-level2" required>
     <label for="necesidad">¿Tiene alguna necesidad o proyecto próximo?</label><textarea id="necesidad" name="necesidad"></textarea>
     <div class="trap" aria-hidden="true"><label>Sitio web<input name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
 
@@ -89,7 +89,17 @@ const form = document.getElementById('form');
 const btn = document.getElementById('btn');
 const err = document.getElementById('err');
 const origen = new URLSearchParams(location.search).get('o') || 'directo';
-const NOMBRES = { nombre:'nombre', apellido:'apellido', empresa:'empresa', puesto:'puesto', correo:'correo', 'teléfono':'teléfono', 'aceptación':'aceptar recibir información' };
+const NOMBRES = { nombre:'nombre', apellido:'apellido', empresa:'empresa', nit:'NIT de la empresa (use el NIT de la empresa, no CF)', direccion:'dirección / ciudad', puesto:'puesto', correo:'correo', 'teléfono':'teléfono', 'aceptación':'aceptar recibir información' };
+
+function nitValido(v) {
+  const t = (v || '').toUpperCase().replace(/[\s-]/g, '');
+  if (!/^\d{2,}[0-9K]$/.test(t)) return false;
+  const cuerpo = t.slice(0, -1), dv = t.slice(-1);
+  let suma = 0;
+  for (let i = 0; i < cuerpo.length; i++) suma += Number(cuerpo[cuerpo.length - 1 - i]) * (i + 2);
+  const r = (11 - (suma % 11)) % 11;
+  return dv === (r === 10 ? 'K' : String(r));
+}
 
 form.addEventListener('submit', async e => {
   e.preventDefault();
@@ -99,7 +109,8 @@ form.addEventListener('submit', async e => {
   f.origen = origen;
 
   const faltan = [];
-  for (const k of ['nombre','apellido','empresa','puesto']) if (!(f[k] || '').trim()) faltan.push(k);
+  for (const k of ['nombre','apellido','empresa','direccion','puesto']) if (!(f[k] || '').trim()) faltan.push(k);
+  if (!nitValido(f.nit)) faltan.push('nit');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((f.correo || '').trim())) faltan.push('correo');
   if ((f.telefono || '').replace(/\D/g, '').length < 8) faltan.push('teléfono');
   if (!f.acepta) faltan.push('aceptación');
