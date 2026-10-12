@@ -30,7 +30,7 @@ button:disabled{opacity:.6;cursor:wait}
 .badge .ic{font-size:24px}
 .valido .badge{background:var(--okbg);color:var(--ok)}
 .usado .badge{background:var(--badbg);color:var(--bad)}
-.vencido .badge{background:var(--warnbg);color:var(--warn)}
+.vencido .badge,.pendiente .badge{background:var(--warnbg);color:var(--warn)}
 .anulado .badge{background:var(--graybg);color:var(--gray)}
 .body{padding:14px 18px}
 .code{font-size:24px;font-weight:bold;letter-spacing:2px;margin-bottom:6px}
@@ -39,6 +39,9 @@ dt{color:var(--mut)}dd{margin:0}
 .alert{background:var(--warnbg);color:#6b4a00;border-radius:6px;padding:10px 12px;font-size:14px;margin-top:12px;line-height:1.45}
 .canje{border-top:1px dashed var(--line);margin-top:14px;padding-top:6px}
 .canje button{width:100%;margin-top:14px}
+.canje input{font-size:16px;padding:10px}
+.chk{display:flex;gap:10px;align-items:flex-start;font-weight:normal;margin:14px 0 0;cursor:pointer;line-height:1.4}
+.chk input{width:22px;height:22px;flex:none;margin:0;padding:0}
 .empty{text-align:center;color:var(--mut);padding:18px 6px;line-height:1.5}
 .help{font-size:13px;color:var(--mut);line-height:1.6}
 .top{display:flex;justify-content:space-between;align-items:center}
@@ -73,7 +76,7 @@ dt{color:var(--mut)}dd{margin:0}
       <div class="msg" id="msg"></div>
     </section>
     <div id="resultados"></div>
-    <p class="help">Si un código aparece como <b>Válido</b>, aplique el 10% en la factura y luego presione <b>Marcar como usado</b>. Así queda registrado en la hoja y nadie más lo puede volver a usar.</p>
+    <p class="help">Si un código aparece como <b>Válido</b>, confirme los datos con el cliente (corrija lo que esté mal), aplique el 10% en la factura y presione <b>Marcar como usado</b>. Así queda registrado en la hoja y nadie más lo puede volver a usar.</p>
   </div>
 </main>
 
@@ -125,6 +128,7 @@ const ETIQUETA = {
   usado: ['⛔', 'YA FUE USADO: no aplicar descuento'],
   vencido: ['⌛', 'VENCIDO: no aplicar descuento'],
   anulado: ['✖', 'ANULADO: no aplicar descuento'],
+  pendiente: ['⏳', 'PENDIENTE: el cliente no confirmó su correo'],
 };
 
 function tarjeta(r, canjeado) {
@@ -141,7 +145,18 @@ function tarjeta(r, canjeado) {
   if (r.mismaEmpresa > 1 && r.situacion === 'valido') html += `<div class="alert" style="background:#eef4ff;color:#1d3d7a">ℹ️ Hay ${r.mismaEmpresa} personas de esta empresa con código. El descuento es por persona, así que puede aplicarlo.</div>`;
   if (r.situacion === 'valido' && !canjeado) {
     html += `<form class="canje" data-codigo="${esc(r.codigo)}">
-      <label>No. de factura</label><input name="factura" required>
+      <p class="help" style="margin:6px 0 0"><b>Confirme los datos con el cliente.</b> Corrija lo que esté mal antes de marcar como usado.</p>
+      <div class="row">
+        <div><label>Nombre</label><input name="nombre" value="${esc(r.nombres)}" autocomplete="off"></div>
+        <div><label>Apellido</label><input name="apellido" value="${esc(r.apellido)}" autocomplete="off"></div>
+      </div>
+      <label>Empresa</label><input name="empresa" value="${esc(r.empresa)}" autocomplete="off">
+      <label>NIT</label><input name="nit" value="${esc(r.nit)}" autocomplete="off">
+      <label>Puesto</label><input name="puesto" value="${esc(r.puesto)}" autocomplete="off">
+      <label>Correo</label><input name="correo" type="email" value="${esc(r.correo)}" autocomplete="off">
+      <label>Teléfono o WhatsApp</label><input name="telefono" type="tel" value="${esc(r.telefono)}" autocomplete="off">
+      <label>No. de factura</label><input name="factura" autocomplete="off">
+      <label class="chk"><input type="checkbox" name="confirmado"><span>Confirmé estos datos con el cliente</span></label>
       <p class="help" style="margin:8px 0 0">Quedará registrado a nombre de <b>${esc(vendedor)}</b>.</p>
       <button type="submit">Marcar como usado</button><div class="msg"></div></form>`;
   }
@@ -172,13 +187,19 @@ $('buscarForm').addEventListener('submit', async e => {
 
 async function canjear(e) {
   e.preventDefault();
-  const f = e.target, msg = f.querySelector('.msg'), btn = f.querySelector('button');
+  const f = e.target, msg = f.querySelector('.msg'), btn = f.querySelector('button[type=submit]');
   const codigo = f.dataset.codigo, factura = f.factura.value.trim();
+  const datos = {};
+  ['nombre', 'apellido', 'empresa', 'nit', 'puesto', 'correo', 'telefono'].forEach(k => { datos[k] = f[k].value.trim(); });
+  if (!datos.nombre || !datos.apellido || !datos.empresa || !datos.puesto) { msg.textContent = 'Complete nombre, apellido, empresa y puesto.'; return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(datos.correo)) { msg.textContent = 'Revise el correo.'; return; }
+  if (datos.telefono.replace(/\D/g, '').length < 8) { msg.textContent = 'Revise el teléfono.'; return; }
   if (!factura) { msg.textContent = 'Escriba el número de factura.'; return; }
-  if (!confirm(`¿Marcar ${codigo} como usado en la factura ${factura}, a nombre de ${vendedor}?\nEsto no se puede deshacer desde aquí.`)) return;
+  if (!f.confirmado.checked) { msg.textContent = 'Marque que confirmó los datos con el cliente.'; return; }
+  if (!confirm(`¿Marcar ${codigo} como usado en la factura ${factura}, a nombre de ${vendedor}?\nLos datos del cliente quedarán como los escribió aquí.\nEsto no se puede deshacer desde aquí.`)) return;
   btn.disabled = true; msg.textContent = 'Guardando…';
   try {
-    const d = await llamar({ accion: 'canjear', codigo, factura });
+    const d = await llamar({ accion: 'canjear', codigo, factura, datos, confirmado: true });
     if (!d.ok) { msg.textContent = d.error || 'No se pudo guardar.'; btn.disabled = false; return; }
     pintar(d.resultados || [], true);
   } catch (x) {
