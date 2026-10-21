@@ -203,6 +203,15 @@ body::after{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;
 @keyframes sheen{0%{transform:translateX(-120%)}60%,100%{transform:translateX(220%)}}
 @keyframes slidedown{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:none}}
 @keyframes slideright{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+.hero h1{display:flex;align-items:flex-start;gap:10px}
+.spark{width:.8em;height:.8em;flex:none;margin-top:-.05em;filter:drop-shadow(0 0 10px rgba(232,56,79,.55));overflow:visible}
+.spark .s1{transform-origin:26px 26px;animation:sparkSpin 7s ease-in-out infinite,sparkPulse 2.6s ease-in-out infinite}
+.spark .s2{transform-origin:50px 45px;animation:twinkle 2.2s .4s ease-in-out infinite}
+.spark .s3{transform-origin:52px 8px;animation:twinkle 1.8s 1s ease-in-out infinite}
+@keyframes sparkSpin{0%,100%{transform:rotate(0)}50%{transform:rotate(25deg)}}
+@keyframes sparkPulse{0%,100%{scale:1}50%{scale:1.15}}
+@keyframes twinkle{0%,100%{opacity:.25;scale:.6}50%{opacity:1;scale:1.15}}
+@media (prefers-reduced-motion:reduce){.spark *{animation:none!important}}
 @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes glowline{0%,100%{opacity:.55}50%{opacity:1}}
 @keyframes ripple{to{transform:scale(3.2);opacity:0}}
@@ -320,7 +329,7 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
 
     <main id="main" class="main is-empty">
       <div class="hero" id="hero">
-        <h1>Hola</h1>
+        <h1><span class="hello">Hola</span><svg class="spark" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF9AA7"/><stop offset="1" stop-color="#E8384F"/></linearGradient></defs><path class="s1" fill="url(#sg)" d="M26 4c2 14 8 20 22 22-14 2-20 8-22 22-2-14-8-20-22-22 14-2 20-8 22-22z"/><path class="s2" fill="url(#sg)" d="M50 34c1 7 4 10 11 11-7 1-10 4-11 11-1-7-4-10-11-11 7-1 10-4 11-11z"/><path class="s3" fill="url(#sg)" d="M52 2c.7 4 2 5.3 6 6-4 .7-5.3 2-6 6-.7-4-2-5.3-6-6 4-.7 5.3-2 6-6z"/></svg></h1>
         <p>¿Qué necesitas consultar?</p>
       </div>
       <div class="log" id="log" role="log" aria-live="polite" aria-label="Conversación"></div>
