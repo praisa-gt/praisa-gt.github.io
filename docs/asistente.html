@@ -321,6 +321,62 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
   .hero p{font-size:22px}
   .main.is-empty{padding-bottom:48px}
 }
+
+/* ===== Estilo minimalista v4 ===== */
+[data-theme="claro"]{--page:#FFFFFF;--bg:#FFFFFF;--side:#FAFAFA;--surface:#FFFFFF;--surface2:#F2F2F4;--line:#E8E8EC;--text:#1C1C20;--muted:#6B6B75;--glass:#FFFFFF;--shadow:0 1px 2px rgba(0,0,0,.05)}
+[data-theme="oscuro"]{--page:#141518;--bg:#141518;--side:#17181C;--surface:#1C1D22;--surface2:#24262C;--line:#2A2C33;--glass:#1C1D22;--shadow:0 1px 2px rgba(0,0,0,.4)}
+body::before,body::after,.topbar::after{display:none!important}
+.topbar{background:var(--bg);color:var(--text);box-shadow:none;border-bottom:1px solid var(--line);padding:10px 24px;min-height:64px}
+.wordmark{background:var(--red);color:#fff;font-size:22px;padding:4px 12px;border-radius:8px}
+.product{color:var(--text);font-size:20px;font-weight:600;letter-spacing:0}
+.pill-ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500;font-size:14px;padding:6px 14px;min-height:38px}
+.pill-ghost:hover{background:var(--surface2)}
+.pill-ghost:focus-visible{outline-color:var(--red)}
+:root{--tb:65px}
+.side{background:var(--side);box-shadow:none;padding:16px 12px;gap:14px}
+.new-btn{background:var(--surface);border:1px solid var(--line);border-radius:12px;font-size:15px;min-height:44px;box-shadow:none}
+.new-btn:hover{background:var(--surface2);transform:none}
+.side-label{font-size:11.5px;letter-spacing:.8px;padding:0 10px 6px}
+.side-toggle{padding:6px 10px}
+.atajo{min-height:40px;padding:8px 10px;gap:10px;border-radius:10px}
+.atajo .hint{display:none}
+.atajo .lbl{font-weight:500;font-size:14.5px}
+.atajo .ico svg{width:18px;height:18px}
+.atajo:hover{transform:none}
+.atajo::before{display:none}
+.hist-row{border-radius:10px}
+.hist-item{min-height:40px;padding:7px 4px 7px 10px;flex-direction:row;align-items:center;gap:8px}
+.hist-t{font-size:14px;font-weight:500;flex:1 1 auto;min-width:0}
+.hist-d{font-size:11.5px;flex:0 0 auto;opacity:.8}
+.hist-row.on::before{display:none}
+.hist-row.on{background:var(--surface2)}
+.hist-clear{margin-left:8px;font-weight:500}
+.main.is-empty{padding-bottom:96px;gap:28px}
+.hero h1{background:none!important;-webkit-background-clip:initial;background-clip:initial;color:var(--text);font-family:'Barlow',sans-serif;font-weight:600;font-size:46px;letter-spacing:-.5px;animation:rise .6s both}
+.hero h1 .hello{color:var(--text)}
+.spark{filter:none;width:.7em;height:.7em}
+.hero p{font-size:20px;color:var(--muted);margin-top:8px}
+.main.is-empty .hero{animation:rise .6s both}
+.composer{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 2px 10px rgba(0,0,0,.06);backdrop-filter:none;-webkit-backdrop-filter:none;padding:6px 6px 6px 20px}
+.composer:focus-within{outline:0;border-color:var(--red);box-shadow:0 0 0 3px rgba(199,13,41,.12);animation:none}
+.send{width:42px;height:42px;border-radius:12px}
+.chips{gap:10px}
+.chip{background:var(--surface);backdrop-filter:none;box-shadow:none;border:1px solid var(--line);border-radius:14px;font-size:14px;font-weight:400;color:var(--muted);min-height:64px}
+.chip:hover{background:var(--surface2);color:var(--text);transform:none}
+.msg.bot .bubble .tw,.copy-btn{background:var(--surface);backdrop-filter:none;box-shadow:none}
+.msg.user .bubble{box-shadow:none;border-radius:18px}
+.msg.bot .bubble>.h::before{animation:none}
+.msg.bot.err .bubble{color:var(--text)}
+.errcard{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:rgba(199,13,41,.06);border:1px solid rgba(199,13,41,.25);border-left:3px solid var(--red);border-radius:12px;padding:12px 16px;max-width:640px}
+.errcard .bubble{flex:1 1 280px;font-size:15px;line-height:1.5}
+.retry-btn{flex:0 0 auto;background:var(--red);color:#fff;border:0;border-radius:10px;padding:8px 16px;font-weight:600;font-size:14px;min-height:38px}
+.retry-btn:hover{filter:brightness(1.1)}
+@media (max-width:820px){.hero h1{font-size:36px}.hero p{font-size:17px}.atajo .hint{display:none}.topbar{padding:10px 16px}}
+.msg.user .bubble{background:var(--red)!important;box-shadow:none!important}
+.avatar{background:var(--red)!important;box-shadow:none!important}
+.send{background:var(--red)!important;box-shadow:none!important}
+.send:hover{filter:brightness(1.1)}
+.hist-d{display:none}
 </style>
 </head>
 <body>
@@ -343,8 +399,8 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
         <span>Nueva conversación</span>
       </button>
-      <div id="atajosBox" class="atajos-box is-collapsed">
-        <button id="atajosToggle" class="side-label side-toggle" type="button" aria-expanded="false" aria-controls="atajos"><span>Qué puedo hacer</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <div id="atajosBox" class="atajos-box">
+        <button id="atajosToggle" class="side-label side-toggle" type="button" aria-expanded="true" aria-controls="atajos"><span>Qué puedo hacer</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
         <div id="atajos" class="atajos"></div>
       </div>
       <div id="histBox" class="hist-box" hidden>
@@ -605,7 +661,21 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
     row.appendChild(el('div', 'avatar', 'IA'));
     var bub = el('div', 'bubble');
     renderMarkdown(text, bub);
-    if (isErr) { row.appendChild(bub); }
+    if (isErr) {
+      var card = el('div', 'errcard');
+      card.appendChild(bub);
+      if (lastSent) {
+        var rb = el('button', 'retry-btn', 'Reintentar'); rb.type = 'button';
+        rb.addEventListener('click', function () {
+          if (busy) return;
+          var prev = row.previousElementSibling;
+          if (prev && prev.classList.contains('user')) prev.remove();
+          row.remove(); send(lastSent);
+        });
+        card.appendChild(rb);
+      }
+      row.appendChild(card);
+    }
     else {
       var wrap = el('div', 'bwrap'); wrap.appendChild(bub);
       var cb = el('button', 'copy-btn', 'Copiar'); cb.type = 'button';
@@ -726,10 +796,12 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
     resetChat();
   });
 
+  var lastSent = '';
   async function send(text) {
     text = (text || '').trim();
     if (!text || busy) return;
     if (!token) { pending = text; openLogin(''); return; }
+    lastSent = text;
     var userRow = addUser(text);
     msg.value = ''; autoGrow();
     setBusy(true);
