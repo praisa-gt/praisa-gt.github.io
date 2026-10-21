@@ -123,6 +123,68 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .hero p{font-size:30px}
   .msg.user .bubble,.msg.bot .bubble,.bwrap{max-width:88%}
 }
+
+/* ===== Ancho de lectura + animaciones ===== */
+.main.is-chat .log,.main.is-chat .composer-wrap{max-width:1120px}
+.msg.bot .bwrap{flex:1 1 auto;max-width:calc(100% - 48px)}
+.msg.bot .bwrap .bubble{width:100%;max-width:100%}
+.msg.bot .bubble p,.msg.bot .bubble ul,.msg.bot .bubble ol{max-width:820px}
+.msg.bot .bubble .tw{max-width:100%;width:100%}
+
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes popin{0%{transform:scale(.85);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes ringpulse{0%{box-shadow:0 0 0 0 rgba(199,13,41,.45)}100%{box-shadow:0 0 0 14px rgba(199,13,41,0)}}
+
+.msg{animation:rise .42s cubic-bezier(.2,.7,.2,1) both}
+.msg.user{animation-name:rise}
+.msg.bot .bubble>*{animation:rise .5s cubic-bezier(.2,.7,.2,1) both}
+.msg.bot .bubble>*:nth-child(1){animation-delay:.04s}
+.msg.bot .bubble>*:nth-child(2){animation-delay:.10s}
+.msg.bot .bubble>*:nth-child(3){animation-delay:.16s}
+.msg.bot .bubble>*:nth-child(4){animation-delay:.22s}
+.msg.bot .bubble>*:nth-child(5){animation-delay:.28s}
+.msg.bot .bubble>*:nth-child(n+6){animation-delay:.34s}
+.msg.bot .bubble tbody tr{animation:fadein .45s ease both}
+.msg.bot .bubble tbody tr:nth-child(1){animation-delay:.18s}
+.msg.bot .bubble tbody tr:nth-child(2){animation-delay:.24s}
+.msg.bot .bubble tbody tr:nth-child(3){animation-delay:.30s}
+.msg.bot .bubble tbody tr:nth-child(4){animation-delay:.36s}
+.msg.bot .bubble tbody tr:nth-child(5){animation-delay:.42s}
+.msg.bot .bubble tbody tr:nth-child(6){animation-delay:.48s}
+.msg.bot .bubble tbody tr:nth-child(n+7){animation-delay:.54s}
+.msg.bot .bubble tbody tr{transition:background .18s}
+.msg.bot .bubble tbody tr:hover{background:var(--surface2)}
+.msg.bot .bubble li{transition:transform .18s}
+.msg.bot .bubble li:hover{transform:translateX(3px)}
+.avatar{animation:popin .5s cubic-bezier(.2,.7,.2,1) both}
+
+.typing .step{background:linear-gradient(90deg,var(--muted) 0%,var(--text) 50%,var(--muted) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 2.4s linear infinite}
+.typing{animation:fadein .3s ease both}
+
+.send,.chip,.atajo,.new-btn,.copy-btn,#themeBtn,#logoutBtn{transition:background .18s,transform .18s,border-color .18s,color .18s,box-shadow .18s}
+.send:not(:disabled):hover{transform:scale(1.08);box-shadow:0 6px 18px rgba(199,13,41,.35)}
+.send:not(:disabled):active{transform:scale(.94)}
+.send svg{transition:transform .2s}
+.send:not(:disabled):hover svg{transform:translateX(3px)}
+.send:disabled{animation:none}
+.composer{transition:box-shadow .25s,border-color .25s}
+.composer:focus-within{box-shadow:0 0 0 4px rgba(199,13,41,.18)}
+.chip:hover,.atajo:hover,.new-btn:hover{transform:translateY(-1px)}
+.atajo .ico{transition:transform .2s}
+.atajo:hover .ico{transform:scale(1.15) rotate(-4deg)}
+.copy-btn:hover{transform:translateY(-1px)}
+.copy-btn.ok{animation:popin .35s ease both}
+.hero{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+.chips{animation:rise .6s .12s cubic-bezier(.2,.7,.2,1) both}
+.main.is-empty .composer-wrap{animation:rise .6s .06s cubic-bezier(.2,.7,.2,1) both}
+.chip:nth-child(2){animation:rise .5s .18s both}.chip:nth-child(3){animation:rise .5s .24s both}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .typing .step{color:var(--muted);background:none}
+}
 </style>
 </head>
 <body>
