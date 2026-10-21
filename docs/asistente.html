@@ -432,6 +432,8 @@ body::before,body::after{display:block!important}
 .msg.bot .bubble thead th{border-bottom:2px solid var(--red);background:var(--surface2)}
 .msg.bot .bubble tbody tr:nth-child(even) td{background:var(--tzebra)}
 .msg.bot .bubble tbody tr:hover td{background:rgba(199,13,41,.07)}
+.msg.bot .bubble th.num,.msg.bot .bubble td.num{text-align:center!important;font-variant-numeric:tabular-nums}
+.msg.bot .bubble td.num{font-weight:600}
 </style>
 </head>
 <body>
@@ -605,11 +607,17 @@ body::before,body::after{display:block!important}
         parent.appendChild(p);
       } else if (b.t === 'table') {
         var wrap = el('div', 'tw'), tb = el('table'), hasHead = b.sep, body = el('tbody');
+        var numCol = [];
+        (b.rows[0] || []).forEach(function (_, ci) {
+          var vals = b.rows.slice(hasHead ? 1 : 0).map(function (r) { return String(r[ci] == null ? '' : r[ci]).replace(/[*_`]/g, '').trim(); });
+          var head = hasHead ? String(b.rows[0][ci] || '').toLowerCase() : '';
+          numCol[ci] = vals.length > 0 && (/existencia|cantidad|unidades|stock|total/.test(head) || vals.every(function (v) { return /^(Q\s*)?[\d.,]+(\s*(und\.?|unidades|pzas?\.?))?$/i.test(v); }));
+        });
         b.rows.forEach(function (row, ri) {
           var tr = el('tr'), isHead = hasHead && ri === 0;
           row.forEach(function (c, ci) {
             var cell = el(isHead ? 'th' : 'td');
-            if (b.align[ci] === 'r') cell.className = 'num';
+            if (b.align[ci] === 'r' || numCol[ci]) cell.className = 'num';
             appendInline(cell, c); tr.appendChild(cell);
           });
           if (isHead) { var th = el('thead'); th.appendChild(tr); tb.appendChild(th); } else body.appendChild(tr);
