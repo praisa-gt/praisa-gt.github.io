@@ -421,6 +421,17 @@ body::before,body::after{display:block!important}
 .atajo:hover::before{transform:scaleY(1)}
 .hist-row.on::before{display:block}
 @media (prefers-reduced-motion:reduce){.hero h1,.main.is-empty .hero,.composer:focus-within,.chip,.msg.bot .bubble>.h::before{animation:none!important}.topbar::after{display:none!important}body::after{animation:none}}
+/* tablas con divisiones */
+.msg.bot .bubble .tw{border:1px solid var(--tline,var(--line));border-radius:12px}
+[data-theme="claro"]{--tline:#D5D5DC;--tzebra:rgba(0,0,0,.025)}
+[data-theme="oscuro"]{--tline:#3A3D47;--tzebra:rgba(255,255,255,.035)}
+.msg.bot .bubble table{border-collapse:separate;border-spacing:0}
+.msg.bot .bubble th,.msg.bot .bubble td{border-bottom:1px solid var(--tline);border-right:1px solid var(--tline)}
+.msg.bot .bubble th:last-child,.msg.bot .bubble td:last-child{border-right:0}
+.msg.bot .bubble tr:last-child td{border-bottom:0}
+.msg.bot .bubble thead th{border-bottom:2px solid var(--red);background:var(--surface2)}
+.msg.bot .bubble tbody tr:nth-child(even) td{background:var(--tzebra)}
+.msg.bot .bubble tbody tr:hover td{background:rgba(199,13,41,.07)}
 </style>
 </head>
 <body>
