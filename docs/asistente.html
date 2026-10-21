@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="es" data-theme="oscuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Praisa IA Interno</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C70D29'/%3E%3Ctext x='16' y='23' font-size='20' font-family='Arial' font-weight='700' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{--red:#C70D29}
+[data-theme="oscuro"]{--page:radial-gradient(ellipse 60% 45% at 62% 40%, rgba(199,13,41,.14), rgba(18,19,23,0) 70%), #121317;--bg:#121317;--side:#17181D;--surface:#1E2026;--surface2:#272A32;--line:#2E3039;--text:#ECECEF;--muted:#A9ABB4;--accent-text:#FF6B7D}
+[data-theme="claro"]{--page:#FFFFFF;--bg:#FFFFFF;--side:#F6F6F7;--surface:#FFFFFF;--surface2:#EDEDF0;--line:#E3E3E8;--text:#1C1C20;--muted:#5A5A63;--accent-text:#C70D29}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{font-family:'Barlow',system-ui,sans-serif;background:var(--page);color:var(--text);min-height:100vh}
+button,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--red);color:#fff;padding:12px 28px;display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.wordmark{background:#fff;color:var(--red);border-radius:9px;padding:5px 14px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:.4px}
+.product{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;line-height:1.05;letter-spacing:.3px}
+.top-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.pill-ghost{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:999px;padding:8px 16px;font-size:15px;font-weight:600;min-height:44px}
+.pill-ghost:focus-visible{outline-color:#fff}
+.shell{flex:1 1 auto;display:flex;flex-wrap:wrap;align-items:stretch}
+
+.side{flex:1 1 240px;max-width:290px;min-width:0;background:var(--side);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:20px}
+.new-btn{display:flex;align-items:center;gap:12px;width:100%;background:var(--surface2);border:0;border-radius:999px;padding:12px 18px;font-weight:600;min-height:48px;text-align:left;font-size:16px}
+.side-label{padding:0 12px 8px;font-size:13px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}
+.atajos{display:flex;flex-direction:column;gap:2px}
+.atajo{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:transparent;border:0;border-radius:12px;padding:10px 12px;min-height:52px}
+.atajo:hover,.new-btn:hover{background:var(--surface2)}
+.atajo .ico{flex:0 0 auto;color:var(--accent-text);display:flex}
+.atajo .txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.atajo .lbl{font-size:15px;font-weight:600;line-height:1.25}
+.atajo .hint{font-size:13px;line-height:1.3;color:var(--muted)}
+
+.main{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;align-items:center;padding:0 24px}
+.hero{width:100%;max-width:760px;display:flex;flex-direction:column;gap:4px}
+.hero h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:60px;line-height:1;color:var(--accent-text)}
+.hero p{margin:0;font-size:42px;line-height:1.1;font-weight:500}
+.log{width:100%;max-width:820px;display:flex;flex-direction:column;gap:24px;padding:36px 0 24px}
+.composer-wrap{width:100%;max-width:820px}
+.composer{display:flex;align-items:flex-end;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:28px;padding:8px 8px 8px 24px}
+.composer:focus-within{outline:2px solid var(--red);outline-offset:2px}
+.composer textarea{flex:1 1 auto;min-width:0;border:0;background:transparent;resize:none;outline:none;font-size:17px;line-height:1.4;padding:13px 0;max-height:160px}
+.composer textarea::placeholder{color:#8A8C96}
+.send{flex:0 0 auto;width:48px;height:48px;border-radius:50%;border:0;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center}
+.send:disabled{opacity:.5;cursor:not-allowed}
+.chips{width:100%;max-width:760px;display:flex;flex-wrap:wrap;gap:10px}
+.chip{background:transparent;border:1px solid var(--line);border-radius:999px;padding:10px 18px;font-size:15px;font-weight:500;min-height:44px}
+.chip:hover{background:var(--surface2)}
+
+.main.is-empty{justify-content:center;gap:32px;padding-top:48px;padding-bottom:64px}
+.main.is-empty .log{display:none}
+.main.is-chat .hero,.main.is-chat .chips{display:none}
+.main.is-chat .composer-wrap{position:sticky;bottom:0;background:var(--bg);padding:8px 0 24px;margin-top:auto}
+.main.is-chat .composer textarea{font-size:16px}
+
+.msg{display:flex;align-items:flex-start;gap:14px}
+.msg.user{justify-content:flex-end}
+.msg.user .bubble{max-width:78%;background:var(--red);color:#fff;border-radius:20px 20px 6px 20px;padding:12px 18px;font-size:16px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.avatar{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px}
+.msg.bot .bubble{min-width:0;max-width:min(78%,680px);padding-top:5px;font-size:16px;line-height:1.55;overflow-wrap:anywhere}
+.msg.bot .bubble p{margin:0 0 10px}
+.msg.bot .bubble p:last-child,.msg.bot .bubble ul:last-child,.msg.bot .bubble ol:last-child{margin-bottom:0}
+.msg.bot .bubble ul,.msg.bot .bubble ol{margin:0 0 10px;padding-left:22px}
+.msg.bot .bubble li{margin:2px 0}
+.msg.bot .bubble .h{font-weight:700;font-size:17px;margin:0 0 6px}
+.msg.bot .bubble a{color:var(--accent-text);font-weight:600}
+.msg.bot .bubble code{background:var(--surface2);border-radius:6px;padding:1px 6px;font-size:14px}
+.msg.bot.err .bubble{color:var(--accent-text)}
+.dots{display:inline-flex;gap:5px;padding-top:12px}
+.dots span{width:8px;height:8px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite ease-in-out}
+.dots span:nth-child(2){animation-delay:.18s}
+.dots span:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dots span{animation:none;opacity:.7}}
+
+dialog{border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);padding:0;width:min(420px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.login-form{padding:26px;display:flex;flex-direction:column;gap:16px}
+.login-form h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-size:28px;line-height:1.1}
+.login-form p{margin:0;font-size:15px;line-height:1.45;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:600}
+.field input{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px 14px;font-size:16px;min-height:48px}
+.login-err{min-height:20px;font-size:14px;font-weight:600;color:var(--accent-text)}
+.login-go{background:var(--red);color:#fff;border:0;border-radius:999px;padding:12px 22px;font-size:16px;font-weight:600;min-height:48px}
+
+@media (max-width:820px){
+  .topbar{padding:10px 16px}
+  .side{flex:1 1 100%;max-width:none;flex-direction:row;overflow-x:auto;padding:10px 16px;border-right:0;border-bottom:1px solid var(--line);gap:8px;align-items:center}
+  .side-label{display:none}
+  .atajos{flex-direction:row;gap:8px}
+  .atajo{width:auto;min-height:44px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
+  .atajo .hint{display:none}
+  .new-btn{width:auto;white-space:nowrap;padding:10px 16px;min-height:44px}
+  .main{padding:0 16px}
+  .hero h1{font-size:44px}
+  .hero p{font-size:30px}
+  .msg.user .bubble,.msg.bot .bubble{max-width:88%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="wordmark">Praisa</div>
+    <div class="product">IA Interno</div>
+    <div class="top-actions">
+      <button id="themeBtn" class="pill-ghost" type="button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="themeIcon" d=""></path></svg>
+        <span id="themeLabel"></span>
+      </button>
+      <button id="logoutBtn" class="pill-ghost" type="button" hidden>Salir</button>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="side">
+      <button id="newBtn" class="new-btn" type="button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        <span>Nueva conversación</span>
+      </button>
+      <div>
+        <div class="side-label">Qué puedo hacer</div>
+        <div id="atajos" class="atajos"></div>
+      </div>
+    </aside>
+
+    <main id="main" class="main is-empty">
+      <div class="hero" id="hero">
+        <h1>Hola</h1>
+        <p>¿Qué necesitas consultar?</p>
+      </div>
+      <div class="log" id="log" role="log" aria-live="polite" aria-label="Conversación"></div>
+      <div class="composer-wrap">
+        <form id="composer" class="composer" autocomplete="off">
+          <label class="sr-only" for="msg">Escribe tu consulta</label>
+          <textarea id="msg" rows="1" placeholder="Pregunta por un producto, cliente o cotización"></textarea>
+          <button type="submit" id="sendBtn" class="send" aria-label="Enviar consulta">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+          </button>
+        </form>
+      </div>
+      <div class="chips" id="chips"></div>
+    </main>
+  </div>
+</div>
+
+<dialog id="login" aria-labelledby="loginTitle">
+  <form id="loginForm" class="login-form">
+    <h2 id="loginTitle">Entrar a Praisa IA</h2>
+    <p>Escribe el usuario y la clave del asistente. Se guardan solo mientras esta pestaña esté abierta.</p>
+    <label class="field">Usuario
+      <input id="loginUser" name="usuario" type="text" autocomplete="username" required>
+    </label>
+    <label class="field">Clave
+      <input id="loginPass" name="clave" type="password" autocomplete="current-password" required>
+    </label>
+    <div id="loginErr" class="login-err" role="alert"></div>
+    <button type="submit" class="login-go">Entrar</button>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  // ===== Configuración =====
+  // Dirección de producción del nodo "Chat - Entrada" en n8n (Production URL).
+  var CONFIG = {
+    chatUrl: 'https://serious-porpoise.pikapod.net/webhook/8f4d8f21-7b6a-4f47-9d2e-166000000167/chat',
+    timeoutMs: 120000
+  };
+  var AUTH_KEY = 'praisa_ia_auth';
+  var THEME_KEY = 'praisa_ia_theme';
+
+  // <parser>
+  function parseInline(s) {
+    var out = [], last = 0, m;
+    var re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|`([^`]+)`/g;
+    while ((m = re.exec(s)) !== null) {
+      if (m.index > last) out.push({ t: 'text', v: s.slice(last, m.index) });
+      if (m[1] !== undefined) out.push({ t: 'b', v: m[1] });
+      else if (m[2] !== undefined) out.push({ t: 'a', v: m[2], href: m[3] });
+      else out.push({ t: 'code', v: m[4] });
+      last = re.lastIndex;
+    }
+    if (last < s.length) out.push({ t: 'text', v: s.slice(last) });
+    return out;
+  }
+  function parseBlocks(text) {
+    var lines = String(text == null ? '' : text).replace(/\r\n?/g, '\n').split('\n');
+    var blocks = [], cur = null, m;
+    function flush() { if (cur) { blocks.push(cur); cur = null; } }
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/\s+$/, '');
+      if (!line.trim()) { flush(); continue; }
+      if ((m = line.match(/^\s*#{1,4}\s+(.*)$/))) { flush(); blocks.push({ t: 'h', text: m[1] }); continue; }
+      if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) {
+        if (!cur || cur.t !== 'ul') { flush(); cur = { t: 'ul', items: [] }; }
+        cur.items.push(m[1]); continue;
+      }
+      if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) {
+        if (!cur || cur.t !== 'ol') { flush(); cur = { t: 'ol', items: [] }; }
+        cur.items.push(m[1]); continue;
+      }
+      if (!cur || cur.t !== 'p') { flush(); cur = { t: 'p', lines: [] }; }
+      cur.lines.push(line.trim());
+    }
+    flush();
+    return blocks;
+  }
+  function pickOutput(d) {
+    if (Array.isArray(d)) d = d[0];
+    if (d == null) return '';
+    if (typeof d === 'string') return d;
+    var v = d.output != null ? d.output : (d.text != null ? d.text : (d.message != null ? d.message : d.response));
+    return v == null ? '' : String(v);
+  }
+  // </parser>
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function appendInline(parent, text) {
+    parseInline(text).forEach(function (tk) {
+      if (tk.t === 'text') parent.appendChild(document.createTextNode(tk.v));
+      else if (tk.t === 'b') parent.appendChild(el('strong', null, tk.v));
+      else if (tk.t === 'code') parent.appendChild(el('code', null, tk.v));
+      else if (tk.t === 'a') {
+        var a = el('a', null, tk.v);
+        a.href = tk.href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        parent.appendChild(a);
+      }
+    });
+  }
+  function renderMarkdown(text, parent) {
+    parseBlocks(text).forEach(function (b) {
+      if (b.t === 'p') {
+        var p = el('p');
+        b.lines.forEach(function (ln, i) { if (i) p.appendChild(document.createElement('br')); appendInline(p, ln); });
+        parent.appendChild(p);
+      } else if (b.t === 'h') {
+        var h = el('p', 'h'); appendInline(h, b.text); parent.appendChild(h);
+      } else {
+        var list = el(b.t);
+        b.items.forEach(function (it) { var li = el('li'); appendInline(li, it); list.appendChild(li); });
+        parent.appendChild(list);
+      }
+    });
+  }
+
+  // ===== Estado =====
+  var $ = function (id) { return document.getElementById(id); };
+  var main = $('main'), log = $('log'), msg = $('msg'), sendBtn = $('sendBtn');
+  var loginDlg = $('login'), loginErr = $('loginErr');
+  var token = '';
+  try { token = sessionStorage.getItem(AUTH_KEY) || ''; } catch (e) {}
+  var sessionId = newId();
+  var busy = false, pending = '';
+
+  function newId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'ses-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  function toBase64(str) {
+    var bytes = new TextEncoder().encode(str), bin = '';
+    bytes.forEach(function (b) { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  }
+
+  // ===== Tema =====
+  var ICON_SUN = 'M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4M12 8a4 4 0 100 8 4 4 0 000-8z';
+  var ICON_MOON = 'M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z';
+  function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    $('themeLabel').textContent = t === 'oscuro' ? 'Tema blanco' : 'Tema oscuro';
+    $('themeIcon').setAttribute('d', t === 'oscuro' ? ICON_SUN : ICON_MOON);
+  }
+  var theme = 'oscuro';
+  try {
+    var saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'claro' || saved === 'oscuro') theme = saved;
+    else if (window.matchMedia && !matchMedia('(prefers-color-scheme: dark)').matches) theme = 'claro';
+  } catch (e) {}
+  applyTheme(theme);
+  $('themeBtn').addEventListener('click', function () {
+    theme = theme === 'oscuro' ? 'claro' : 'oscuro';
+    applyTheme(theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+  });
+
+  // ===== Atajos y sugerencias =====
+  var ATAJOS = [
+    { label: 'Consultar un producto', hint: 'Información del producto [código]', icon: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8' },
+    { label: 'Existencia por código', hint: '¿Cuántas unidades hay de [código]?', icon: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5' },
+    { label: 'Historial de un cliente', hint: 'Historial del cliente [nombre o cuenta]', icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2' },
+    { label: 'Cotizar', hint: 'Cotiza [código] para [cliente]', icon: 'M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5M9 13h6M9 17h6' },
+    { label: 'Sin movimiento', hint: 'Productos sin movimiento', icon: 'M3 7l6 6 4-4 8 8M21 12v5h-5' },
+    { label: 'Consulta técnica', hint: 'Válvula de bola de 2 pulgadas roscada para vapor', icon: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19V5' }
+  ];
+  var CHIPS = ['Productos sin movimiento', 'Trampas termodinámicas en existencia', 'Válvula de bola de 2 pulgadas roscada para vapor'];
+
+  ATAJOS.forEach(function (a) {
+    var b = el('button', 'atajo'); b.type = 'button';
+    var ico = el('span', 'ico');
+    ico.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + a.icon + '"></path></svg>';
+    var txt = el('span', 'txt');
+    txt.appendChild(el('span', 'lbl', a.label));
+    txt.appendChild(el('span', 'hint', a.hint));
+    b.appendChild(ico); b.appendChild(txt);
+    b.addEventListener('click', function () {
+      msg.value = a.hint; autoGrow(); msg.focus();
+      var i = a.hint.indexOf('['), j = a.hint.indexOf(']');
+      if (i >= 0 && j > i) msg.setSelectionRange(i, j + 1);
+    });
+    $('atajos').appendChild(b);
+  });
+  CHIPS.forEach(function (c) {
+    var b = el('button', 'chip', c); b.type = 'button';
+    b.addEventListener('click', function () { send(c); });
+    $('chips').appendChild(b);
+  });
+
+  // ===== Conversación =====
+  function showChat() { main.classList.remove('is-empty'); main.classList.add('is-chat'); }
+  function showEmpty() { main.classList.remove('is-chat'); main.classList.add('is-empty'); }
+  function scrollEnd() { window.scrollTo(0, document.documentElement.scrollHeight); }
+  function addUser(text) {
+    showChat();
+    var row = el('div', 'msg user'); row.appendChild(el('div', 'bubble', text));
+    log.appendChild(row); scrollEnd(); return row;
+  }
+  function addBot(text, isErr) {
+    showChat();
+    var row = el('div', 'msg bot' + (isErr ? ' err' : ''));
+    row.appendChild(el('div', 'avatar', 'IA'));
+    var bub = el('div', 'bubble');
+    renderMarkdown(text, bub);
+    row.appendChild(bub); log.appendChild(row); scrollEnd(); return row;
+  }
+  function addTyping() {
+    var row = el('div', 'msg bot');
+    row.appendChild(el('div', 'avatar', 'IA'));
+    var d = el('div', 'dots'); d.setAttribute('aria-label', 'Escribiendo');
+    d.appendChild(el('span')); d.appendChild(el('span')); d.appendChild(el('span'));
+    row.appendChild(d); log.appendChild(row); scrollEnd(); return row;
+  }
+  function setBusy(v) { busy = v; sendBtn.disabled = v; log.setAttribute('aria-busy', v ? 'true' : 'false'); }
+
+  function describeError(status) {
+    if (status === 404) return 'No encontré el chat del asistente. Avisa a quien administra n8n: puede que el flujo no esté publicado.';
+    if (status === 413 || status === 429) return 'El asistente está recibiendo demasiadas solicitudes. Espera un momento e inténtalo de nuevo.';
+    if (status >= 500) return 'El asistente tuvo un error al procesar tu consulta. Inténtalo de nuevo; si sigue igual, avisa a quien administra n8n.';
+    return 'No pude completar la consulta (código ' + status + ').';
+  }
+
+  async function send(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+    if (!token) { pending = text; openLogin(''); return; }
+    var userRow = addUser(text);
+    msg.value = ''; autoGrow();
+    setBusy(true);
+    var typing = addTyping();
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, CONFIG.timeoutMs);
+    try {
+      var res = await fetch(CONFIG.chatUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + token },
+        body: JSON.stringify({ action: 'sendMessage', sessionId: sessionId, chatInput: text }),
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      typing.remove();
+      if (res.status === 401 || res.status === 403) {
+        token = ''; try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
+        $('logoutBtn').hidden = true;
+        userRow.remove(); if (!log.children.length) showEmpty();
+        pending = text; openLogin('Usuario o clave incorrectos.');
+        return;
+      }
+      if (!res.ok) { addBot(describeError(res.status), true); return; }
+      var raw = await res.text(), data;
+      try { data = JSON.parse(raw); } catch (e) { data = raw; }
+      var out = pickOutput(data).trim();
+      addBot(out || 'El asistente no devolvió respuesta. Inténtalo de nuevo.', !out);
+    } catch (e) {
+      clearTimeout(timer); typing.remove();
+      addBot(e && e.name === 'AbortError'
+        ? 'La consulta tardó demasiado. Inténtalo de nuevo en un momento.'
+        : 'No pude conectarme con el asistente. Revisa tu internet; si sigue igual, avisa a quien administra n8n.', true);
+    } finally {
+      setBusy(false); msg.focus();
+    }
+  }
+
+  function resetChat() {
+    sessionId = newId(); log.textContent = ''; pending = ''; showEmpty(); msg.focus();
+  }
+
+  // ===== Composer =====
+  function autoGrow() { msg.style.height = 'auto'; msg.style.height = Math.min(msg.scrollHeight, 160) + 'px'; }
+  msg.addEventListener('input', autoGrow);
+  msg.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(msg.value); }
+  });
+  $('composer').addEventListener('submit', function (e) { e.preventDefault(); send(msg.value); });
+  $('newBtn').addEventListener('click', resetChat);
+
+  // ===== Acceso =====
+  function openLogin(err) {
+    loginErr.textContent = err || '';
+    $('loginPass').value = '';
+    if (!loginDlg.open) { if (loginDlg.showModal) loginDlg.showModal(); else loginDlg.setAttribute('open', ''); }
+    $('loginUser').focus();
+  }
+  loginDlg.addEventListener('cancel', function (e) { e.preventDefault(); });
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var u = $('loginUser').value.trim(), p = $('loginPass').value;
+    if (!u || !p) { loginErr.textContent = 'Escribe usuario y clave.'; return; }
+    token = toBase64(u + ':' + p);
+    try { sessionStorage.setItem(AUTH_KEY, token); } catch (err) {}
+    $('loginPass').value = '';
+    if (loginDlg.close) loginDlg.close(); else loginDlg.removeAttribute('open');
+    $('logoutBtn').hidden = false;
+    var t = pending; pending = '';
+    if (t) send(t); else msg.focus();
+  });
+  $('logoutBtn').addEventListener('click', function () {
+    token = ''; try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
+    $('logoutBtn').hidden = true; resetChat(); openLogin('');
+  });
+
+  // ===== Inicio =====
+  if (token) { $('logoutBtn').hidden = false; msg.focus(); } else { openLogin(''); }
+})();
+</script>
+</body>
+</html>
