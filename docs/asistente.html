@@ -185,6 +185,87 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   *,*::before,*::after{animation:none!important;transition:none!important}
   .typing .step{color:var(--muted);background:none}
 }
+
+/* ===== Barra lateral fija, texturas y más movimiento ===== */
+:root{--tb:76px}
+[data-theme="oscuro"]{--glass:rgba(30,32,38,.72);--grain:.07;--grain-rgb:255;--glow1:rgba(199,13,41,.20);--glow2:rgba(255,107,125,.08);--shadow:0 18px 40px -18px rgba(0,0,0,.7)}
+[data-theme="claro"]{--glass:rgba(255,255,255,.82);--grain:.05;--grain-rgb:0;--glow1:rgba(199,13,41,.09);--glow2:rgba(255,160,170,.14);--shadow:0 18px 40px -22px rgba(28,28,32,.35)}
+body{transition:background .45s ease,color .35s ease}
+.app{position:relative;z-index:1}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--grain);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  filter:invert(0);mix-blend-mode:overlay}
+[data-theme="claro"] body::before{filter:invert(1);mix-blend-mode:multiply}
+body::after{content:"";position:fixed;inset:-20%;z-index:0;pointer-events:none;
+  background:radial-gradient(40% 35% at 25% 30%,var(--glow1),transparent 70%),radial-gradient(35% 30% at 78% 70%,var(--glow2),transparent 70%);
+  animation:drift 26s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translate3d(-3%,-2%,0) scale(1)}to{transform:translate3d(4%,3%,0) scale(1.12)}}
+@keyframes sheen{0%{transform:translateX(-120%)}60%,100%{transform:translateX(220%)}}
+@keyframes slidedown{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:none}}
+@keyframes slideright{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes glowline{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes ripple{to{transform:scale(3.2);opacity:0}}
+@keyframes pulsebtn{0%{box-shadow:0 0 0 0 rgba(199,13,41,.5)}70%{box-shadow:0 0 0 12px rgba(199,13,41,0)}100%{box-shadow:0 0 0 0 rgba(199,13,41,0)}}
+
+/* Barra superior con degradado y brillo que la recorre */
+.topbar{position:sticky;top:0;z-index:30;min-height:var(--tb);background:linear-gradient(180deg,#D5112E 0%,#BB0C27 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.14) inset,0 10px 30px -12px rgba(120,0,16,.6);overflow:hidden;animation:slidedown .55s cubic-bezier(.2,.7,.2,1) both}
+.topbar::after{content:"";position:absolute;top:0;bottom:0;width:35%;left:0;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.16),transparent);animation:sheen 7s ease-in-out infinite}
+.wordmark{box-shadow:0 4px 14px -4px rgba(0,0,0,.35);transition:transform .25s}
+.wordmark:hover{transform:rotate(-2deg) scale(1.04)}
+.pill-ghost{backdrop-filter:blur(6px);box-shadow:0 1px 0 rgba(255,255,255,.18) inset}
+.pill-ghost:hover{background:rgba(255,255,255,.26);transform:translateY(-1px)}
+
+/* Barra lateral que no desaparece */
+@media (min-width:821px){
+  .shell{flex-wrap:nowrap;align-items:flex-start}
+  .side{position:sticky;top:var(--tb);align-self:flex-start;flex:0 0 280px;max-width:280px;height:calc(100vh - var(--tb));overflow-y:auto;scrollbar-width:thin}
+  .main{align-self:stretch;min-height:calc(100vh - var(--tb))}
+}
+.side{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%),var(--side);box-shadow:1px 0 0 rgba(255,255,255,.03) inset,14px 0 30px -24px rgba(0,0,0,.5)}
+[data-theme="claro"] .side{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(246,246,247,.9)),var(--side)}
+.side>*{animation:slideright .55s cubic-bezier(.2,.7,.2,1) both}
+.side>*:nth-child(1){animation-delay:.10s}.side>*:nth-child(2){animation-delay:.18s}.side>*:nth-child(3){animation-delay:.26s}
+.atajo{animation:slideright .5s cubic-bezier(.2,.7,.2,1) both}
+.atajo:nth-child(1){animation-delay:.28s}.atajo:nth-child(2){animation-delay:.34s}.atajo:nth-child(3){animation-delay:.40s}
+.atajo:nth-child(4){animation-delay:.46s}.atajo:nth-child(5){animation-delay:.52s}.atajo:nth-child(6){animation-delay:.58s}
+.new-btn{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 8px 18px -12px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.atajo{position:relative;overflow:hidden}
+.atajo::before{content:"";position:absolute;left:0;top:18%;bottom:18%;width:3px;border-radius:3px;background:var(--red);transform:scaleY(0);transition:transform .22s}
+.atajo:hover::before{transform:scaleY(1)}
+.atajo:hover{transform:translateX(2px)}
+
+/* Texturas: vidrio, brillos y sombras en capas */
+.composer{background:var(--glass);backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,var(--shadow)}
+.msg.user .bubble{background:linear-gradient(135deg,#E3152F 0%,#B80B24 100%);box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 14px 26px -14px rgba(199,13,41,.75)}
+.avatar{background:radial-gradient(circle at 30% 25%,#F0364D,#C70D29 55%,#9E0A20);box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 6px 14px -6px rgba(199,13,41,.8)}
+.msg.bot:has(.typing) .avatar{animation:popin .5s both,pulsebtn 1.6s 0.5s infinite}
+.msg.bot .bubble .tw{background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset,var(--shadow)}
+.msg.bot .bubble th{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0)),var(--surface2)}
+.msg.bot .bubble code{box-shadow:0 0 0 1px var(--line) inset}
+.chip{background:var(--glass);backdrop-filter:blur(8px);box-shadow:0 1px 0 rgba(255,255,255,.05) inset}
+.copy-btn{background:var(--glass)}
+.send{background:linear-gradient(135deg,#E3152F,#B80B24);box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 8px 18px -8px rgba(199,13,41,.8);position:relative;overflow:hidden}
+.send.ready:not(:disabled){animation:pulsebtn 1.8s infinite}
+.hero h1{background:linear-gradient(100deg,var(--accent-text) 0%,#FF9AA7 40%,var(--accent-text) 80%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rise .6s both,shimmer 6s linear infinite}
+.hero p{animation:rise .7s .08s both}
+.main.is-empty .hero{animation:rise .6s both,floaty 6s 1s ease-in-out infinite}
+.msg.bot .bubble>.h{position:relative;padding-left:12px}
+.msg.bot .bubble>.h::before{content:"";position:absolute;left:0;top:.2em;bottom:.2em;width:3px;border-radius:3px;background:var(--red);animation:glowline 2.4s ease-in-out infinite}
+.msg.bot .bubble a{background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;transition:background-size .25s}
+.msg.bot .bubble a:hover{background-size:100% 2px}
+.msg.bot .bubble strong{transition:color .2s}
+dialog[open]{animation:popin .35s cubic-bezier(.2,.7,.2,1) both}
+dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
+.login-go{transition:transform .18s,box-shadow .18s}
+.login-go:hover{transform:translateY(-1px);box-shadow:0 10px 22px -10px rgba(199,13,41,.8)}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.45);transform:scale(0);animation:ripple .6s ease-out forwards;pointer-events:none;width:40px;height:40px;margin:-20px 0 0 -20px}
+::selection{background:rgba(199,13,41,.35)}
+@media (max-width:820px){.topbar{position:sticky}}
+@media (prefers-reduced-motion:reduce){body::after{animation:none}.topbar::after{display:none}}
 </style>
 </head>
 <body>
@@ -542,8 +623,19 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     sessionId = newId(); log.textContent = ''; pending = ''; showEmpty(); msg.focus();
   }
 
+  // ===== Efecto de onda en botones =====
+  document.addEventListener('pointerdown', function (e) {
+    var t = e.target.closest && e.target.closest('.send,.atajo,.new-btn,.chip');
+    if (!t) return;
+    var r = t.getBoundingClientRect(), sp = document.createElement('span');
+    sp.className = 'ripple'; sp.style.left = (e.clientX - r.left) + 'px'; sp.style.top = (e.clientY - r.top) + 'px';
+    if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
+    t.style.overflow = 'hidden'; t.appendChild(sp);
+    setTimeout(function () { sp.remove(); }, 650);
+  });
+
   // ===== Composer =====
-  function autoGrow() { msg.style.height = 'auto'; msg.style.height = Math.min(msg.scrollHeight, 160) + 'px'; msg.style.overflowY = msg.scrollHeight > 160 ? 'auto' : 'hidden'; }
+  function autoGrow() { sendBtn.classList.toggle('ready', !!msg.value.trim()); msg.style.height = 'auto'; msg.style.height = Math.min(msg.scrollHeight, 160) + 'px'; msg.style.overflowY = msg.scrollHeight > 160 ? 'auto' : 'hidden'; }
   msg.addEventListener('input', autoGrow);
   msg.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(msg.value); }
