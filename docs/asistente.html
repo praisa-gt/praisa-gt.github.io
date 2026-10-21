@@ -393,6 +393,34 @@ body::before,body::after,.topbar::after{display:none!important}
 .side-label{color:var(--red)}
 [data-theme="oscuro"] .side-label{color:var(--accent-text)}
 .composer:focus-within{border-color:var(--red)}
+/* ===== Movimiento y vida recuperados (v5) ===== */
+body::before,body::after{display:block!important}
+.topbar::after{display:block!important}
+[data-theme="oscuro"]{--page:radial-gradient(ellipse 60% 45% at 62% 40%, rgba(199,13,41,.14), rgba(18,19,23,0) 70%), #121317;--glass:rgba(30,32,38,.72);--shadow:0 18px 40px -18px rgba(0,0,0,.7)}
+[data-theme="claro"]{--glass:rgba(255,255,255,.82);--shadow:0 18px 40px -22px rgba(28,28,32,.35)}
+.side{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(246,246,247,.9)),var(--side)}
+[data-theme="oscuro"] .side{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%),var(--side)}
+.hero h1{background:linear-gradient(100deg,var(--accent-text) 0%,#FF9AA7 40%,var(--accent-text) 80%)!important;background-size:220% 100%!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important;animation:rise .6s both,shimmer 6s linear infinite!important}
+[data-theme="claro"] .hero h1{background-image:linear-gradient(100deg,#B80B24 0%,#E8384F 45%,#B80B24 90%)!important}
+.hero h1 .hello{color:transparent!important}
+.spark{filter:drop-shadow(0 0 10px rgba(232,56,79,.55))}
+.main.is-empty .hero{animation:rise .6s both,floaty 6s 1s ease-in-out infinite!important}
+.composer{background:var(--glass);backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);box-shadow:var(--shadow)}
+.composer:focus-within{box-shadow:0 0 0 4px rgba(199,13,41,.2),0 0 34px 2px rgba(232,56,79,.35);animation:glow 2.4s ease-in-out infinite}
+.chip{animation:rise .5s both}.chip:nth-child(2){animation-delay:.1s}.chip:nth-child(3){animation-delay:.2s}
+.chip:hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(199,13,41,.5)}
+.msg.user .bubble{background:linear-gradient(135deg,#E3152F 0%,#B80B24 100%)!important;box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 14px 26px -14px rgba(199,13,41,.75)!important}
+.avatar{background:radial-gradient(circle at 30% 25%,#F0364D,#C70D29 55%,#9E0A20)!important;box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 6px 14px -6px rgba(199,13,41,.8)!important}
+.send{background:linear-gradient(135deg,#E3152F,#B80B24)!important;box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 8px 18px -8px rgba(199,13,41,.8)!important}
+.send:hover{transform:scale(1.06)}
+.msg.bot .bubble .tw{background:var(--glass);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+.msg.bot .bubble>.h::before{animation:glowline 2.4s ease-in-out infinite}
+.new-btn:hover,.atajo:hover{transform:translateY(-1px)}
+.atajo{position:relative}
+.atajo::before{display:block}
+.atajo:hover::before{transform:scaleY(1)}
+.hist-row.on::before{display:block}
+@media (prefers-reduced-motion:reduce){.hero h1,.main.is-empty .hero,.composer:focus-within,.chip,.msg.bot .bubble>.h::before{animation:none!important}.topbar::after{display:none!important}body::after{animation:none}}
 </style>
 </head>
 <body>
