@@ -377,6 +377,9 @@ body::before,body::after,.topbar::after{display:none!important}
 .send{background:var(--red)!important;box-shadow:none!important}
 .send:hover{filter:brightness(1.1)}
 .hist-d{display:none}
+.chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:820px}
+.chip{min-height:36px;padding:7px 16px;border:0;border-radius:999px;background:var(--surface2);color:var(--muted);font-size:14px;text-align:center;display:inline-flex;justify-content:center}
+.chip:hover{background:var(--line);color:var(--text)}
 </style>
 </head>
 <body>
@@ -619,7 +622,7 @@ body::before,body::after,.topbar::after{display:none!important}
     { label: 'Sin movimiento', hint: 'Productos sin movimiento', icon: 'M3 7l6 6 4-4 8 8M21 12v5h-5' },
     { label: 'Consulta técnica', hint: 'Válvula de bola de 2 pulgadas roscada para vapor', icon: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19V5' }
   ];
-  var CHIPS = ['Productos sin movimiento', 'Diferencia entre una válvula de mariposa DelVal serie 50 y una serie 56', 'Trampas termodinámicas en existencia'];
+  var CHIPS = [['Productos sin movimiento', 'Productos sin movimiento'], ['Comparar dos series', 'Diferencia entre una válvula de mariposa DelVal serie 50 y una serie 56'], ['Trampas en existencia', 'Trampas termodinámicas en existencia']];
 
   ATAJOS.forEach(function (a) {
     var b = el('button', 'atajo'); b.type = 'button';
@@ -641,8 +644,8 @@ body::before,body::after,.topbar::after{display:none!important}
     $('atajosToggle').setAttribute('aria-expanded', c ? 'false' : 'true');
   });
   CHIPS.forEach(function (c) {
-    var b = el('button', 'chip', c); b.type = 'button';
-    b.addEventListener('click', function () { send(c); });
+    var b = el('button', 'chip', c[0]); b.type = 'button'; b.title = c[1];
+    b.addEventListener('click', function () { send(c[1]); });
     $('chips').appendChild(b);
   });
 
