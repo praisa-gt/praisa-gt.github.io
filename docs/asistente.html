@@ -266,6 +266,24 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
 ::selection{background:rgba(199,13,41,.35)}
 @media (max-width:820px){.topbar{position:sticky}}
 @media (prefers-reduced-motion:reduce){body::after{animation:none}.topbar::after{display:none}}
+
+/* ===== Historial ===== */
+.hist-box{display:flex;flex-direction:column;gap:2px}
+.hist{display:flex;flex-direction:column;gap:2px;max-height:none}
+.hist-row{position:relative;display:flex;align-items:center;border-radius:12px;animation:slideright .4s cubic-bezier(.2,.7,.2,1) both;transition:background .18s}
+.hist-row:hover,.hist-row.on{background:var(--surface2)}
+.hist-row.on::before{content:"";position:absolute;left:0;top:20%;bottom:20%;width:3px;border-radius:3px;background:var(--red)}
+.hist-item{flex:1 1 auto;min-width:0;text-align:left;background:transparent;border:0;padding:9px 6px 9px 14px;display:flex;flex-direction:column;gap:1px;min-height:48px;border-radius:12px}
+.hist-t{font-size:14.5px;font-weight:600;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-d{font-size:12.5px;color:var(--muted)}
+.hist-del{flex:0 0 auto;width:34px;height:34px;margin-right:6px;border:0;border-radius:50%;background:transparent;color:var(--muted);opacity:0;display:flex;align-items:center;justify-content:center;transition:opacity .15s,background .15s,color .15s}
+.hist-row:hover .hist-del,.hist-del:focus-visible{opacity:1}
+.hist-del:hover{background:rgba(199,13,41,.16);color:var(--accent-text)}
+.hist-empty{padding:6px 14px;font-size:13.5px;color:var(--muted)}
+.hist-clear{align-self:flex-start;margin:8px 0 0 12px;background:transparent;border:0;color:var(--muted);font-size:13px;font-weight:600;text-decoration:underline;padding:6px 4px;min-height:32px}
+.hist-clear:hover{color:var(--accent-text)}
+.hist-clear.sure{color:var(--accent-text)}
+@media (max-width:820px){.hist-box{display:none}}
 </style>
 </head>
 <body>
@@ -291,6 +309,11 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
       <div>
         <div class="side-label">Qué puedo hacer</div>
         <div id="atajos" class="atajos"></div>
+      </div>
+      <div id="histBox" class="hist-box" hidden>
+        <div class="side-label">Historial</div>
+        <div id="hist" class="hist"></div>
+        <button id="histClear" class="hist-clear" type="button">Borrar historial</button>
       </div>
     </aside>
 
@@ -340,6 +363,8 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
     timeoutMs: 120000
   };
   var AUTH_KEY = 'praisa_ia_auth';
+  var HIST_KEY = 'praisa_ia_hist';
+  var MAX_CONV = 30, MAX_MSG = 60;
   var THEME_KEY = 'praisa_ia_theme';
 
   // <parser>
@@ -578,6 +603,79 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
     return 'No pude completar la consulta (código ' + status + ').';
   }
 
+
+  // ===== Historial (se guarda solo en este navegador) =====
+  function histLoad() {
+    try { var a = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function histSave(list) {
+    for (;;) {
+      try { localStorage.setItem(HIST_KEY, JSON.stringify(list)); return; }
+      catch (e) { if (list.length <= 1) return; list.pop(); }
+    }
+  }
+  function remember(userText, botText) {
+    var list = histLoad(), c = null, i;
+    for (i = 0; i < list.length; i++) if (list[i].id === sessionId) { c = list.splice(i, 1)[0]; break; }
+    if (!c) c = { id: sessionId, title: userText.replace(/\s+/g, ' ').slice(0, 60), msgs: [] };
+    c.msgs.push({ r: 'u', t: userText }, { r: 'b', t: botText });
+    if (c.msgs.length > MAX_MSG) c.msgs = c.msgs.slice(-MAX_MSG);
+    c.ts = Date.now();
+    list.unshift(c);
+    histSave(list.slice(0, MAX_CONV));
+    renderHist();
+  }
+  function histDate(ts) {
+    var d = new Date(ts), n = new Date(), pad = function (x) { return String(x).padStart(2, '0'); };
+    var day = function (x) { return new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime(); };
+    var diff = Math.round((day(n) - day(d)) / 86400000);
+    if (diff === 0) return 'Hoy · ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    if (diff === 1) return 'Ayer';
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+  function renderHist() {
+    var box = $('histBox'), host = $('hist');
+    if (!token) { box.hidden = true; host.textContent = ''; return; }
+    box.hidden = false; host.textContent = '';
+    var list = histLoad();
+    $('histClear').hidden = !list.length;
+    if (!list.length) { host.appendChild(el('div', 'hist-empty', 'Aquí aparecerán tus conversaciones.')); return; }
+    list.forEach(function (c, idx) {
+      var row = el('div', 'hist-row' + (c.id === sessionId ? ' on' : ''));
+      row.style.animationDelay = Math.min(idx, 8) * 0.04 + 's';
+      var b = el('button', 'hist-item'); b.type = 'button'; b.title = c.title;
+      b.appendChild(el('span', 'hist-t', c.title)); b.appendChild(el('span', 'hist-d', histDate(c.ts)));
+      b.addEventListener('click', function () { openConv(c.id); });
+      var x = el('button', 'hist-del', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Borrar conversación: ' + c.title);
+      x.addEventListener('click', function (ev) { ev.stopPropagation(); delConv(c.id); });
+      row.appendChild(b); row.appendChild(x); host.appendChild(row);
+    });
+  }
+  function openConv(id) {
+    if (busy) return;
+    var c = histLoad().filter(function (x) { return x.id === id; })[0];
+    if (!c) return;
+    sessionId = c.id; log.textContent = ''; pending = '';
+    c.msgs.forEach(function (m) { if (m.r === 'u') addUser(m.t); else addBot(m.t, false); });
+    renderHist(); scrollEnd(); msg.focus();
+  }
+  function delConv(id) {
+    histSave(histLoad().filter(function (x) { return x.id !== id; }));
+    if (id === sessionId) resetChat(); else renderHist();
+  }
+  var clearTimer = 0;
+  $('histClear').addEventListener('click', function () {
+    var b = this;
+    if (!b.classList.contains('sure')) {
+      b.classList.add('sure'); b.textContent = '¿Seguro? Toca otra vez';
+      clearTimer = setTimeout(function () { b.classList.remove('sure'); b.textContent = 'Borrar historial'; }, 3500);
+      return;
+    }
+    clearTimeout(clearTimer); b.classList.remove('sure'); b.textContent = 'Borrar historial';
+    try { localStorage.removeItem(HIST_KEY); } catch (e) {}
+    resetChat();
+  });
+
   async function send(text) {
     text = (text || '').trim();
     if (!text || busy) return;
@@ -599,7 +697,7 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
       typing.remove();
       if (res.status === 401 || res.status === 403) {
         token = ''; try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
-        $('logoutBtn').hidden = true;
+        $('logoutBtn').hidden = true; renderHist();
         userRow.remove(); if (!log.children.length) showEmpty();
         pending = text; openLogin('Usuario o clave incorrectos.');
         return;
@@ -609,6 +707,7 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
       try { data = JSON.parse(raw); } catch (e) { data = raw; }
       var out = pickOutput(data).trim();
       addBot(out || 'El asistente no devolvió respuesta. Inténtalo de nuevo.', !out);
+      if (out) remember(text, out);
     } catch (e) {
       clearTimeout(timer); typing.remove();
       addBot(e && e.name === 'AbortError'
@@ -620,7 +719,7 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
   }
 
   function resetChat() {
-    sessionId = newId(); log.textContent = ''; pending = ''; showEmpty(); msg.focus();
+    sessionId = newId(); log.textContent = ''; pending = ''; showEmpty(); renderHist(); msg.focus();
   }
 
   // ===== Efecto de onda en botones =====
@@ -659,7 +758,7 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
     try { sessionStorage.setItem(AUTH_KEY, token); } catch (err) {}
     $('loginPass').value = '';
     if (loginDlg.close) loginDlg.close(); else loginDlg.removeAttribute('open');
-    $('logoutBtn').hidden = false;
+    $('logoutBtn').hidden = false; renderHist();
     var t = pending; pending = '';
     if (t) send(t); else msg.focus();
   });
@@ -669,6 +768,7 @@ dialog::backdrop{animation:fadein .3s both;backdrop-filter:blur(4px)}
   });
 
   // ===== Inicio =====
+  renderHist();
   if (token) { $('logoutBtn').hidden = false; msg.focus(); } else { openLogin(''); }
 })();
 </script>
