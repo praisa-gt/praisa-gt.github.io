@@ -76,7 +76,20 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .msg.bot .bubble a{color:var(--accent-text);font-weight:600}
 .msg.bot .bubble code{background:var(--surface2);border-radius:6px;padding:1px 6px;font-size:14px}
 .msg.bot.err .bubble{color:var(--accent-text)}
-.dots{display:inline-flex;gap:5px;padding-top:12px}
+.msg.bot .bubble .tw{overflow-x:auto;margin:0 0 10px;border:1px solid var(--line);border-radius:12px}
+.msg.bot .bubble table{border-collapse:collapse;width:100%;font-size:14.5px;line-height:1.4}
+.msg.bot .bubble th,.msg.bot .bubble td{padding:8px 12px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.msg.bot .bubble th{background:var(--surface2);font-weight:700;white-space:nowrap}
+.msg.bot .bubble tr:last-child td{border-bottom:0}
+.msg.bot .bubble td.num,.msg.bot .bubble th.num{text-align:right;white-space:nowrap}
+.bwrap{min-width:0;max-width:min(78%,760px);display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.bwrap .bubble{max-width:100%}
+.copy-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;min-height:32px;cursor:pointer}
+.copy-btn:hover{color:var(--text);border-color:var(--muted)}
+.copy-btn.ok{color:var(--accent-text);border-color:var(--accent-text)}
+.typing{display:flex;align-items:center;gap:12px;min-height:34px}
+.typing .step{font-size:14px;color:var(--muted)}
+.dots{display:inline-flex;gap:5px;padding-top:0}
 .dots span{width:8px;height:8px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite ease-in-out}
 .dots span:nth-child(2){animation-delay:.18s}
 .dots span:nth-child(3){animation-delay:.36s}
@@ -104,7 +117,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   .main{padding:0 16px}
   .hero h1{font-size:44px}
   .hero p{font-size:30px}
-  .msg.user .bubble,.msg.bot .bubble{max-width:88%}
+  .msg.user .bubble,.msg.bot .bubble,.bwrap{max-width:88%}
 }
 </style>
 </head>
@@ -203,6 +216,15 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i].replace(/\s+$/, '');
       if (!line.trim()) { flush(); continue; }
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        var cells = line.trim().replace(/^\||\|$/g, '').split('|').map(function (c) { return c.trim(); });
+        if (cells.every(function (c) { return /^:?-{2,}:?$/.test(c); })) {
+          if (cur && cur.t === 'table' && !cur.sep) { cur.sep = true; cur.align = cells.map(function (c) { return /:$/.test(c) ? 'r' : 'l'; }); }
+          continue;
+        }
+        if (!cur || cur.t !== 'table') { flush(); cur = { t: 'table', rows: [], sep: false, align: [] }; }
+        cur.rows.push(cells); continue;
+      }
       if ((m = line.match(/^\s*#{1,4}\s+(.*)$/))) { flush(); blocks.push({ t: 'h', text: m[1] }); continue; }
       if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) {
         if (!cur || cur.t !== 'ul') { flush(); cur = { t: 'ul', items: [] }; }
@@ -251,6 +273,18 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
         var p = el('p');
         b.lines.forEach(function (ln, i) { if (i) p.appendChild(document.createElement('br')); appendInline(p, ln); });
         parent.appendChild(p);
+      } else if (b.t === 'table') {
+        var wrap = el('div', 'tw'), tb = el('table'), hasHead = b.sep, body = el('tbody');
+        b.rows.forEach(function (row, ri) {
+          var tr = el('tr'), isHead = hasHead && ri === 0;
+          row.forEach(function (c, ci) {
+            var cell = el(isHead ? 'th' : 'td');
+            if (b.align[ci] === 'r') cell.className = 'num';
+            appendInline(cell, c); tr.appendChild(cell);
+          });
+          if (isHead) { var th = el('thead'); th.appendChild(tr); tb.appendChild(th); } else body.appendChild(tr);
+        });
+        tb.appendChild(body); wrap.appendChild(tb); parent.appendChild(wrap);
       } else if (b.t === 'h') {
         var h = el('p', 'h'); appendInline(h, b.text); parent.appendChild(h);
       } else {
@@ -348,14 +382,44 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     row.appendChild(el('div', 'avatar', 'IA'));
     var bub = el('div', 'bubble');
     renderMarkdown(text, bub);
-    row.appendChild(bub); log.appendChild(row); scrollEnd(); return row;
+    if (isErr) { row.appendChild(bub); }
+    else {
+      var wrap = el('div', 'bwrap'); wrap.appendChild(bub);
+      var cb = el('button', 'copy-btn', 'Copiar'); cb.type = 'button';
+      cb.setAttribute('aria-label', 'Copiar respuesta');
+      cb.addEventListener('click', function () { copyText(text, cb); });
+      wrap.appendChild(cb); row.appendChild(wrap);
+    }
+    log.appendChild(row); scrollEnd(); return row;
   }
+  function copyText(t, btn) {
+    function done(ok) {
+      btn.textContent = ok ? 'Copiado' : 'No se pudo copiar';
+      btn.classList.toggle('ok', ok);
+      setTimeout(function () { btn.textContent = 'Copiar'; btn.classList.remove('ok'); }, 1800);
+    }
+    function fallback() {
+      try {
+        var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); var ok = document.execCommand('copy'); ta.remove(); done(!!ok);
+      } catch (e) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done(true); }, fallback);
+    else fallback();
+  }
+  var STEPS = [[0, 'Entendiendo tu consulta…'], [4000, 'Consultando CAF y documentos…'], [12000, 'Armando la respuesta…'], [30000, 'Sigue trabajando, esta consulta es larga…']];
   function addTyping() {
     var row = el('div', 'msg bot');
     row.appendChild(el('div', 'avatar', 'IA'));
     var d = el('div', 'dots'); d.setAttribute('aria-label', 'Escribiendo');
     d.appendChild(el('span')); d.appendChild(el('span')); d.appendChild(el('span'));
-    row.appendChild(d); log.appendChild(row); scrollEnd(); return row;
+    var box = el('div', 'typing'), step = el('span', 'step', STEPS[0][1]);
+    step.setAttribute('aria-live', 'polite');
+    box.appendChild(d); box.appendChild(step); row.appendChild(box);
+    var timers = STEPS.slice(1).map(function (s) { return setTimeout(function () { step.textContent = s[1]; }, s[0]); });
+    var origRemove = row.remove.bind(row);
+    row.remove = function () { timers.forEach(clearTimeout); origRemove(); };
+    log.appendChild(row); scrollEnd(); return row;
   }
   function setBusy(v) { busy = v; sendBtn.disabled = v; log.setAttribute('aria-busy', v ? 'true' : 'false'); }
 
