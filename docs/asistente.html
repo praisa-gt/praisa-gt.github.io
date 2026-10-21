@@ -235,6 +235,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
         if (!cur || cur.t !== 'ol') { flush(); cur = { t: 'ol', items: [] }; }
         cur.items.push(m[1]); continue;
       }
+      if (cur && (cur.t === 'ul' || cur.t === 'ol') && /^\s+\S/.test(lines[i])) { cur.items[cur.items.length - 1] += '\n' + line.trim(); continue; }
       if (!cur || cur.t !== 'p') { flush(); cur = { t: 'p', lines: [] }; }
       cur.lines.push(line.trim());
     }
@@ -290,7 +291,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
         var h = el('p', 'h'); appendInline(h, b.text); parent.appendChild(h);
       } else {
         var list = el(b.t);
-        b.items.forEach(function (it) { var li = el('li'); appendInline(li, it); list.appendChild(li); });
+        b.items.forEach(function (it) { var li = el('li'); it.split('\n').forEach(function (ln, i) { if (i) li.appendChild(document.createElement('br')); appendInline(li, ln); }); list.appendChild(li); });
         parent.appendChild(list);
       }
     });
