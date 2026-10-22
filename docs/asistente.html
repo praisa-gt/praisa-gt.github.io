@@ -1056,17 +1056,44 @@ body::before,body::after{display:block!important}
     $('loginUser').focus();
   }
   loginDlg.addEventListener('cancel', function (e) { e.preventDefault(); });
+  // Verifica usuario y clave antes de entrar, sin ejecutar el asistente (solo pide cargar la sesión).
+  // 'malo' únicamente si el servidor responde 401/403; ante cualquier otro resultado se deja pasar
+  // y el control de siempre (al enviar la primera consulta) sigue funcionando.
+  function verificarClave(tok) {
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, 15000);
+    return fetch(CONFIG.chatUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + tok },
+      body: JSON.stringify({ action: 'loadPreviousSession', sessionId: sessionId }),
+      signal: ctrl.signal
+    }).then(function (r) { clearTimeout(t); return (r.status === 401 || r.status === 403) ? 'malo' : 'ok'; })
+      .catch(function () { clearTimeout(t); return 'ok'; });
+  }
+  var loginBusy = false;
   $('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    if (loginBusy) return;
     var u = $('loginUser').value.trim(), p = $('loginPass').value;
     if (!u || !p) { loginErr.textContent = 'Escribe usuario y clave.'; return; }
-    token = toBase64(u + ':' + p);
-    try { sessionStorage.setItem(AUTH_KEY, token); } catch (err) {}
-    $('loginPass').value = '';
-    if (loginDlg.close) loginDlg.close(); else loginDlg.removeAttribute('open');
-    $('logoutBtn').hidden = false; $('fbBtn').hidden = false; renderHist();
-    var t = pending; pending = '';
-    if (t) send(t); else msg.focus();
+    var tok = toBase64(u + ':' + p);
+    var go = document.querySelector('.login-go');
+    loginBusy = true; go.disabled = true; go.textContent = 'Verificando…'; loginErr.textContent = '';
+    verificarClave(tok).then(function (r) {
+      loginBusy = false; go.disabled = false; go.textContent = 'Entrar';
+      if (r === 'malo') {
+        loginErr.textContent = 'Usuario o clave incorrectos.';
+        $('loginPass').value = ''; $('loginPass').focus();
+        return;
+      }
+      token = tok;
+      try { sessionStorage.setItem(AUTH_KEY, token); } catch (err) {}
+      $('loginPass').value = '';
+      if (loginDlg.close) loginDlg.close(); else loginDlg.removeAttribute('open');
+      $('logoutBtn').hidden = false; $('fbBtn').hidden = false; renderHist();
+      var t2 = pending; pending = '';
+      if (t2) send(t2); else msg.focus();
+    });
   });
   $('fbBtn').addEventListener('click', function () { openFeedback(); });
   $('fbForm').addEventListener('submit', submitFeedback);
