@@ -434,6 +434,26 @@ body::before,body::after{display:block!important}
 .msg.bot .bubble tbody tr:hover td{background:rgba(199,13,41,.07)}
 .msg.bot .bubble th.num,.msg.bot .bubble td.num{text-align:center!important;font-variant-numeric:tabular-nums}
 .msg.bot .bubble td.num{font-weight:600}
+.bactions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.fb-link{background:transparent;border:0;color:var(--muted);font-size:13px;cursor:pointer;padding:4px 2px;min-height:28px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:transparent;transition:color .15s,text-decoration-color .15s}
+.fb-link:hover{color:var(--red);text-decoration-color:currentColor}
+#fbDlg{width:min(480px,calc(100vw - 32px))}
+.fb-form{padding:26px 26px 22px;display:flex;flex-direction:column;gap:14px}
+.fb-form h2{margin:0;font-size:21px}
+.fb-form p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
+.fb-types{display:flex;gap:8px;flex-wrap:wrap}
+.fb-type{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;min-height:40px;transition:background .15s,border-color .15s}
+.fb-type:hover{background:var(--surface2)}
+.fb-type[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.fb-text{width:100%;min-height:110px;resize:vertical;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text);padding:12px 14px;font:inherit;font-size:15px;box-sizing:border-box}
+.fb-text:focus{outline:2px solid var(--red);outline-offset:1px}
+.fb-ctx{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--muted);line-height:1.4}
+.fb-ctx input{margin-top:2px}
+.fb-foot{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.fb-status{margin-right:auto;font-size:13.5px;font-weight:500}
+.fb-cancel{background:transparent;border:0;color:var(--muted);font-weight:600;padding:10px 14px;cursor:pointer;min-height:44px}
+.fb-go{background:var(--red);color:#fff;border:0;border-radius:999px;padding:10px 22px;font-weight:700;min-height:44px;cursor:pointer}
+.fb-go:disabled{opacity:.55;cursor:default}
 </style>
 </head>
 <body>
@@ -445,6 +465,10 @@ body::before,body::after{display:block!important}
       <button id="themeBtn" class="pill-ghost" type="button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path id="themeIcon" d=""></path></svg>
         <span id="themeLabel"></span>
+      </button>
+      <button id="fbBtn" class="pill-ghost" type="button" hidden>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path></svg>
+        <span>Comentarios</span>
       </button>
       <button id="logoutBtn" class="pill-ghost" type="button" hidden>Salir</button>
     </div>
@@ -487,6 +511,26 @@ body::before,body::after{display:block!important}
   </div>
 </div>
 
+<dialog id="fbDlg" aria-labelledby="fbTitle">
+  <form id="fbForm" class="fb-form">
+    <h2 id="fbTitle">Comentarios a mejorar</h2>
+    <p>Cuéntanos qué funcionó, qué falló o qué te gustaría que hiciera. Así mejoramos el asistente.</p>
+    <div class="fb-types" role="group" aria-label="Tipo de comentario">
+      <button type="button" class="fb-type" data-v="bien" aria-pressed="false">👍 Funcionó bien</button>
+      <button type="button" class="fb-type" data-v="mal" aria-pressed="true">👎 Algo falló</button>
+      <button type="button" class="fb-type" data-v="idea" aria-pressed="false">💡 Idea</button>
+    </div>
+    <label class="sr-only" for="fbText">Tu comentario</label>
+    <textarea id="fbText" class="fb-text" maxlength="800" placeholder="Escribe aquí tu comentario"></textarea>
+    <label class="fb-ctx"><input id="fbCtx" type="checkbox" checked><span id="fbCtxLbl">Incluir la última consulta y respuesta para entender mejor el caso</span></label>
+    <div class="fb-foot">
+      <span id="fbStatus" class="fb-status" role="status"></span>
+      <button type="button" id="fbCancel" class="fb-cancel">Cancelar</button>
+      <button type="submit" id="fbGo" class="fb-go">Enviar</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="login" aria-labelledby="loginTitle">
   <form id="loginForm" class="login-form">
     <h2 id="loginTitle">Entrar a Praisa IA</h2>
@@ -513,6 +557,7 @@ body::before,body::after{display:block!important}
     timeoutMs: 120000
   };
   var AUTH_KEY = 'praisa_ia_auth';
+  var FEEDBACK_URL = 'https://serious-porpoise.pikapod.net/webhook/praisa-calificacion-3f6c2a91';
   var HIST_KEY = 'praisa_ia_hist';
   var MAX_CONV = 30, MAX_MSG = 60;
   var THEME_KEY = 'praisa_ia_theme';
@@ -720,7 +765,47 @@ body::before,body::after{display:block!important}
     var row = el('div', 'msg user'); row.appendChild(el('div', 'bubble', text));
     log.appendChild(row); scrollEnd(); return row;
   }
-  function addBot(text, isErr) {
+  function sendFeedback(valoracion, comentario, pregunta, respuesta) {
+    var usuario = '';
+    try { usuario = atob(token).split(':')[0]; } catch (e) {}
+    return fetch(FEEDBACK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + token },
+      body: JSON.stringify({ valoracion: valoracion, comentario: comentario || '', usuario: usuario, pregunta: String(pregunta || '').slice(0, 1500), respuesta: String(respuesta || '').slice(0, 3000), pagina: 'asistente-v2' })
+    }).then(function (r) { return r.ok; }).catch(function () { return false; });
+  }
+  var fbCtx = { q: '', r: '' }, fbType = 'mal';
+  function setFbType(v) {
+    fbType = v;
+    Array.prototype.forEach.call(document.querySelectorAll('.fb-type'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-v') === v ? 'true' : 'false'); });
+  }
+  function openFeedback(q, r) {
+    var dlg = $('fbDlg');
+    if (q === undefined) { q = lastSent; r = lastAnswer; }
+    fbCtx = { q: q || '', r: r || '' };
+    var has = !!(fbCtx.q || fbCtx.r);
+    $('fbCtx').checked = has; $('fbCtx').disabled = !has;
+    $('fbCtxLbl').textContent = has ? 'Incluir la consulta y respuesta para entender mejor el caso' : 'Aún no hay una consulta para adjuntar';
+    $('fbText').value = ''; $('fbStatus').textContent = ''; $('fbGo').disabled = false;
+    setFbType('mal');
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    $('fbText').focus();
+  }
+  function closeFeedback() { var d = $('fbDlg'); if (d.close) d.close(); else d.removeAttribute('open'); }
+  function submitFeedback(e) {
+    e.preventDefault();
+    var txt = $('fbText').value.trim();
+    if (!txt && fbType !== 'bien') { $('fbStatus').textContent = 'Escribe un comentario.'; $('fbText').focus(); return; }
+    var useCtx = $('fbCtx').checked;
+    var val = fbType === 'bien' ? 'bien' : 'mal';
+    var com = (fbType === 'idea' ? '[Idea] ' : '') + txt;
+    $('fbGo').disabled = true; $('fbStatus').textContent = 'Enviando…';
+    sendFeedback(val, com, useCtx ? fbCtx.q : '', useCtx ? fbCtx.r : '').then(function (ok) {
+      if (ok) { $('fbStatus').textContent = '✅ Gracias, lo revisaremos'; setTimeout(closeFeedback, 1100); }
+      else { $('fbStatus').textContent = '⚠️ No se pudo enviar. Intenta de nuevo.'; $('fbGo').disabled = false; }
+    });
+  }
+  function addBot(text, isErr, noFb) {
     showChat();
     var row = el('div', 'msg bot' + (isErr ? ' err' : ''));
     row.appendChild(el('div', 'avatar', 'IA'));
@@ -742,11 +827,19 @@ body::before,body::after{display:block!important}
       row.appendChild(card);
     }
     else {
+      if (!noFb) lastAnswer = text;
       var wrap = el('div', 'bwrap'); wrap.appendChild(bub);
       var cb = el('button', 'copy-btn', 'Copiar'); cb.type = 'button';
       cb.setAttribute('aria-label', 'Copiar respuesta');
       cb.addEventListener('click', function () { copyText(text, cb); });
-      wrap.appendChild(cb); row.appendChild(wrap);
+      var acts = el('div', 'bactions'); acts.appendChild(cb);
+      if (!noFb) {
+        var fl = el('button', 'fb-link', 'Comentar'); fl.type = 'button';
+        fl.setAttribute('aria-label', 'Dejar un comentario sobre esta respuesta');
+        var q0 = lastSent; fl.addEventListener('click', function () { openFeedback(q0, text); });
+        acts.appendChild(fl);
+      }
+      wrap.appendChild(acts); row.appendChild(wrap);
     }
     log.appendChild(row); scrollEnd(); return row;
   }
@@ -841,7 +934,7 @@ body::before,body::after{display:block!important}
     var c = histLoad().filter(function (x) { return x.id === id; })[0];
     if (!c) return;
     sessionId = c.id; log.textContent = ''; pending = '';
-    c.msgs.forEach(function (m) { if (m.r === 'u') addUser(m.t); else addBot(m.t, false); });
+    c.msgs.forEach(function (m) { if (m.r === 'u') addUser(m.t); else addBot(m.t, false, true); });
     renderHist(); scrollEnd(); msg.focus();
   }
   function delConv(id) {
@@ -861,7 +954,7 @@ body::before,body::after{display:block!important}
     resetChat();
   });
 
-  var lastSent = '';
+  var lastSent = '', lastAnswer = '';
   async function send(text) {
     text = (text || '').trim();
     if (!text || busy) return;
@@ -884,7 +977,7 @@ body::before,body::after{display:block!important}
       typing.remove();
       if (res.status === 401 || res.status === 403) {
         token = ''; try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
-        $('logoutBtn').hidden = true; renderHist();
+        $('logoutBtn').hidden = true; $('fbBtn').hidden = true; renderHist();
         userRow.remove(); if (!log.children.length) showEmpty();
         pending = text; openLogin('Usuario o clave incorrectos.');
         return;
@@ -945,18 +1038,22 @@ body::before,body::after{display:block!important}
     try { sessionStorage.setItem(AUTH_KEY, token); } catch (err) {}
     $('loginPass').value = '';
     if (loginDlg.close) loginDlg.close(); else loginDlg.removeAttribute('open');
-    $('logoutBtn').hidden = false; renderHist();
+    $('logoutBtn').hidden = false; $('fbBtn').hidden = false; renderHist();
     var t = pending; pending = '';
     if (t) send(t); else msg.focus();
   });
+  $('fbBtn').addEventListener('click', function () { openFeedback(); });
+  $('fbForm').addEventListener('submit', submitFeedback);
+  $('fbCancel').addEventListener('click', closeFeedback);
+  Array.prototype.forEach.call(document.querySelectorAll('.fb-type'), function (b) { b.addEventListener('click', function () { setFbType(b.getAttribute('data-v')); }); });
   $('logoutBtn').addEventListener('click', function () {
     token = ''; try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
-    $('logoutBtn').hidden = true; resetChat(); openLogin('');
+    $('logoutBtn').hidden = true; $('fbBtn').hidden = true; resetChat(); openLogin('');
   });
 
   // ===== Inicio =====
   renderHist();
-  if (token) { $('logoutBtn').hidden = false; msg.focus(); } else { openLogin(''); }
+  if (token) { $('logoutBtn').hidden = false; $('fbBtn').hidden = false; msg.focus(); } else { openLogin(''); }
 })();
 </script>
 </body>
