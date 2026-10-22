@@ -833,6 +833,13 @@ body::before,body::after{display:block!important}
       cb.setAttribute('aria-label', 'Copiar respuesta');
       cb.addEventListener('click', function () { copyText(text, cb); });
       var acts = el('div', 'bactions'); acts.appendChild(cb);
+      if (!noFb && lastSent) {
+        var qa = el('button', 'copy-btn', 'Copiar con pregunta'); qa.type = 'button';
+        qa.setAttribute('aria-label', 'Copiar la pregunta y la respuesta');
+        var qTxt = lastSent;
+        qa.addEventListener('click', function () { copyText('Pregunta: ' + qTxt + '\n\nRespuesta:\n' + text, qa); });
+        acts.appendChild(qa);
+      }
       var tbls = bub.querySelectorAll('table');
       if (tbls.length) {
         var tb2 = el('button', 'copy-btn', tbls.length > 1 ? 'Copiar tablas' : 'Copiar tabla'); tb2.type = 'button';
