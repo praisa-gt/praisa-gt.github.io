@@ -88,7 +88,7 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(-
 .msg.bot .bubble td.num,.msg.bot .bubble th.num{text-align:right;white-space:nowrap}
 .bwrap{min-width:0;max-width:min(78%,760px);display:flex;flex-direction:column;align-items:flex-start;gap:12px}
 .bwrap .bubble{max-width:100%}
-.copy-btn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;min-height:32px;cursor:pointer}
+.copy-btn{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600;min-height:32px;cursor:pointer}
 .copy-btn:hover{color:var(--text);border-color:var(--muted)}
 .copy-btn.ok{color:var(--accent-text);border-color:var(--accent-text)}
 .typing{display:flex;align-items:center;gap:12px;min-height:34px}
@@ -833,6 +833,22 @@ body::before,body::after{display:block!important}
       cb.setAttribute('aria-label', 'Copiar respuesta');
       cb.addEventListener('click', function () { copyText(text, cb); });
       var acts = el('div', 'bactions'); acts.appendChild(cb);
+      var tbls = bub.querySelectorAll('table');
+      if (tbls.length) {
+        var tb2 = el('button', 'copy-btn', tbls.length > 1 ? 'Copiar tablas' : 'Copiar tabla'); tb2.type = 'button';
+        tb2.setAttribute('aria-label', 'Copiar tablas para pegar en Excel');
+        tb2.addEventListener('click', function () {
+          var out = [];
+          Array.prototype.forEach.call(tbls, function (t) {
+            Array.prototype.forEach.call(t.rows, function (r) {
+              out.push(Array.prototype.map.call(r.cells, function (c) { return c.textContent.replace(/\s+/g, ' ').trim(); }).join('\t'));
+            });
+            out.push('');
+          });
+          copyText(out.join('\n').trim(), tb2);
+        });
+        acts.appendChild(tb2);
+      }
       if (!noFb) {
         var fl = el('button', 'fb-link', 'Comentar'); fl.type = 'button';
         fl.setAttribute('aria-label', 'Dejar un comentario sobre esta respuesta');
@@ -844,10 +860,11 @@ body::before,body::after{display:block!important}
     log.appendChild(row); scrollEnd(); return row;
   }
   function copyText(t, btn) {
+    var label = btn.textContent;
     function done(ok) {
       btn.textContent = ok ? 'Copiado' : 'No se pudo copiar';
       btn.classList.toggle('ok', ok);
-      setTimeout(function () { btn.textContent = 'Copiar'; btn.classList.remove('ok'); }, 1800);
+      setTimeout(function () { btn.textContent = label; btn.classList.remove('ok'); }, 1800);
     }
     function fallback() {
       try {
