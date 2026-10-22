@@ -856,12 +856,6 @@ body::before,body::after{display:block!important}
         });
         acts.appendChild(tb2);
       }
-      if (!noFb) {
-        var fl = el('button', 'fb-link', 'Comentar'); fl.type = 'button';
-        fl.setAttribute('aria-label', 'Dejar un comentario sobre esta respuesta');
-        var q0 = lastSent; fl.addEventListener('click', function () { openFeedback(q0, text); });
-        acts.appendChild(fl);
-      }
       wrap.appendChild(acts); row.appendChild(wrap);
     }
     log.appendChild(row); scrollEnd(); return row;
