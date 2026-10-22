@@ -520,12 +520,13 @@ body::before,body::after{display:block!important}
   // <parser>
   function parseInline(s) {
     var out = [], last = 0, m;
-    var re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|`([^`]+)`/g;
+    var re = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|`([^`]+)`|(?:^|(?<=[\s(]))\*([^*\s][^*]*?)\*(?=$|[\s.,;:!?)])/g;
     while ((m = re.exec(s)) !== null) {
       if (m.index > last) out.push({ t: 'text', v: s.slice(last, m.index) });
       if (m[1] !== undefined) out.push({ t: 'b', v: m[1] });
       else if (m[2] !== undefined) out.push({ t: 'a', v: m[2], href: m[3] });
-      else out.push({ t: 'code', v: m[4] });
+      else if (m[4] !== undefined) out.push({ t: 'code', v: m[4] });
+      else out.push({ t: 'i', v: m[5] });
       last = re.lastIndex;
     }
     if (last < s.length) out.push({ t: 'text', v: s.slice(last) });
@@ -591,6 +592,7 @@ body::before,body::after{display:block!important}
     parseInline(text).forEach(function (tk) {
       if (tk.t === 'text') parent.appendChild(document.createTextNode(tk.v));
       else if (tk.t === 'b') parent.appendChild(el('strong', null, tk.v));
+      else if (tk.t === 'i') parent.appendChild(el('em', null, tk.v));
       else if (tk.t === 'code') parent.appendChild(el('code', null, tk.v));
       else if (tk.t === 'a') {
         var a = el('a', null, tk.v);
