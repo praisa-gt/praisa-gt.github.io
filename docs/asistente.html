@@ -658,7 +658,7 @@ body::before,body::after{display:block!important}
         var wrap = el('div', 'tw'), tb = el('table'), hasHead = b.sep, body = el('tbody');
         var numCol = [], longCol = [];
         (b.rows[0] || []).forEach(function (_, ci) {
-          var vals = b.rows.slice(hasHead ? 1 : 0).map(function (r) { return String(r[ci] == null ? '' : r[ci]).replace(/[*_`]/g, '').trim(); });
+          var vals = b.rows.slice(hasHead ? 1 : 0).map(function (r) { return String(r[ci] == null ? '' : r[ci]).replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*_`]/g, '').trim(); });
           var head = hasHead ? String(b.rows[0][ci] || '').toLowerCase() : '';
           longCol[ci] = vals.some(function (v) { return v.length > 32; });
           numCol[ci] = vals.length > 0 && (/existencia|cantidad|unidades|stock|total/.test(head) || vals.every(function (v) { return /^(Q\s*)?[\d.,]+(\s*(und\.?|unidades|pzas?\.?))?$/i.test(v); }));
@@ -669,7 +669,7 @@ body::before,body::after{display:block!important}
             var cell = el(isHead ? 'th' : 'td');
             var cls = [];
             if (b.align[ci] === 'r' || numCol[ci]) cls.push('num');
-            var plain = String(c == null ? '' : c).replace(/[*_`]/g, '').trim();
+            var plain = String(c == null ? '' : c).replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*_`]/g, '').trim();
             if (!isHead && plain.length <= 26) cls.push('nw');
             if (!isHead && longCol[ci]) cls.push('desc');
             if (cls.length) cell.className = cls.join(' ');
