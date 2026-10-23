@@ -47,8 +47,8 @@ button:disabled{opacity:.6;cursor:wait}
 
   <form id="form" novalidate>
     <h1>Actualice sus datos</h1>
-    <p class="sub">Toma solo un minuto. Al enviarlo recibirá su código de descuento.</p>
-    <div class="promo">🎁 <b>10% de descuento</b> en su primera compra · promoción por tiempo limitado</div>
+    <p class="sub">Toma solo un minuto. Con sus datos actualizados le atendemos mejor.</p>
+    <div class="promo">🎁 <b>10% de descuento</b> en su primera compra para clientes nuevos y para quienes hace tiempo no nos compran · promoción por tiempo limitado</div>
 
     <div class="row">
       <div><label for="nombre">Nombre <em>*</em></label><input id="nombre" name="nombre" autocomplete="given-name" required></div>
@@ -65,7 +65,7 @@ button:disabled{opacity:.6;cursor:wait}
 
     <label class="chk"><input type="checkbox" id="acepta" name="acepta"> <span>Acepto recibir información y promociones de Praisa <em style="color:var(--red)">*</em></span></label>
 
-    <button type="submit" id="btn">Enviar y obtener mi descuento</button>
+    <button type="submit" id="btn">Enviar mis datos</button>
     <div class="err" id="err" aria-live="polite"></div>
     <p class="legal">Sus datos se usan únicamente para atenderle y enviarle información de Praisa. Puede darse de baja cuando lo desee.</p>
   </form>
@@ -126,6 +126,16 @@ form.addEventListener('submit', async e => {
       return;
     }
     document.getElementById('okNombre').textContent = data.nombre || f.nombre;
+    if (data.sinDescuento) {
+      document.getElementById('okTexto').innerHTML = 'Sus datos fueron actualizados.<br>Su vendedor de Praisa los confirmará con usted.';
+      document.getElementById('okCodigo').style.display = 'none';
+      document.getElementById('okUso').style.display = 'none';
+      document.getElementById('okTip').textContent = 'Si tiene alguna consulta o desea cotizar, con gusto le atendemos.';
+      form.style.display = 'none';
+      document.getElementById('ok').style.display = 'block';
+      window.scrollTo(0, 0);
+      return;
+    }
     document.getElementById('okCodigo').textContent = data.codigo;
     document.getElementById('okVence').textContent = data.vence || '';
     const txt = document.getElementById('okTexto');
@@ -151,7 +161,7 @@ form.addEventListener('submit', async e => {
   } catch (x) {
     err.textContent = 'No pudimos enviar sus datos. Intente de nuevo en un momento o escríbanos a ventas@praisa.com.';
   } finally {
-    btn.disabled = false; btn.textContent = 'Enviar y obtener mi descuento';
+    btn.disabled = false; btn.textContent = 'Enviar mis datos';
   }
 });
 </script>
