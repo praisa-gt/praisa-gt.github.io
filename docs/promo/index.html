@@ -88,7 +88,16 @@ const ENDPOINT = 'https://serious-porpoise.pikapod.net/webhook/praisa-promo-regi
 const form = document.getElementById('form');
 const btn = document.getElementById('btn');
 const err = document.getElementById('err');
-const origen = new URLSearchParams(location.search).get('o') || 'directo';
+const params = new URLSearchParams(location.search);
+const origen = params.get('o') || 'directo';
+// Enlace de actualización (?t=actualizar): sin promoción, solo para que los clientes actuales actualicen sus datos.
+const modo = params.get('t') === 'actualizar' ? 'actualizar' : 'promo';
+const TXT_BOTON = modo === 'actualizar' ? 'Enviar mis datos' : 'Enviar y obtener mi descuento';
+if (modo === 'actualizar') {
+  document.querySelector('.promo').style.display = 'none';
+  document.querySelector('.sub').textContent = 'Toma solo un minuto. Con sus datos actualizados le atendemos mejor.';
+  btn.textContent = TXT_BOTON;
+}
 const NOMBRES = { nombre:'nombre', apellido:'apellido', empresa:'empresa', nit:'NIT de la empresa (use el NIT de la empresa, no CF)', direccion:'dirección / ciudad', puesto:'puesto', correo:'correo', 'teléfono':'teléfono', 'aceptación':'aceptar recibir información' };
 
 function nitValido(v) {
@@ -107,6 +116,7 @@ form.addEventListener('submit', async e => {
   const f = Object.fromEntries(new FormData(form));
   f.acepta = document.getElementById('acepta').checked;
   f.origen = origen;
+  f.modo = modo;
 
   const faltan = [];
   for (const k of ['nombre','apellido','empresa','direccion','puesto']) if (!(f[k] || '').trim()) faltan.push(k);
@@ -161,7 +171,7 @@ form.addEventListener('submit', async e => {
   } catch (x) {
     err.textContent = 'No pudimos enviar sus datos. Intente de nuevo en un momento o escríbanos a ventas@praisa.com.';
   } finally {
-    btn.disabled = false; btn.textContent = 'Enviar y obtener mi descuento';
+    btn.disabled = false; btn.textContent = TXT_BOTON;
   }
 });
 </script>
