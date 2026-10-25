@@ -130,6 +130,7 @@ const ETIQUETA = {
   vencido: ['⌛', 'VENCIDO: no aplicar descuento'],
   anulado: ['✖', 'ANULADO: no aplicar descuento'],
   pendiente: ['⏳', 'PENDIENTE: el cliente no confirmó su correo'],
+  activo_caf: ['⛔', 'CLIENTE ACTIVO EN CAF: no aplicar descuento'],
 };
 
 function tarjeta(r, canjeado) {
@@ -141,8 +142,9 @@ function tarjeta(r, canjeado) {
   ];
   if (r.situacion === 'usado') filas.push(['Usado el', r.fechaUso], ['Factura', r.factura], ['Vendedor', r.vendedor]);
   if (r.necesidad) filas.push(['Necesidad', r.necesidad]);
-  let html = `<div class="res ${canjeado ? 'valido' : r.situacion}"><div class="badge"><span class="ic">${canjeado ? '✅' : ic}</span>${esc(canjeado ? 'LISTO: quedó registrado como usado' : txt)}</div><div class="body">
+  let html = `<div class="res ${canjeado ? 'valido' : (r.situacion === 'activo_caf' ? 'usado' : r.situacion)}"><div class="badge"><span class="ic">${canjeado ? '✅' : ic}</span>${esc(canjeado ? 'LISTO: quedó registrado como usado' : txt)}</div><div class="body">
     <div class="code">${esc(r.codigo)}</div><dl>${filas.filter(f => f[1]).map(f => `<dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd>`).join('')}</dl>`;
+  if (r.cafAviso && !canjeado) html += `<div class="alert" style="background:${r.situacion === 'activo_caf' ? '#fdecec;color:#8a1c1c' : '#fff6e0;color:#7a5200'}">${r.situacion === 'activo_caf' ? '⛔' : '⚠️'} ${esc(r.cafAviso)}</div>`;
   if (r.mismaEmpresa > 1 && r.situacion === 'valido') html += `<div class="alert" style="background:#eef4ff;color:#1d3d7a">ℹ️ Hay ${r.mismaEmpresa} personas de esta empresa con código. El descuento es por persona, así que puede aplicarlo.</div>`;
   if (r.situacion === 'valido' && !canjeado) {
     html += `<form class="canje" data-codigo="${esc(r.codigo)}">
