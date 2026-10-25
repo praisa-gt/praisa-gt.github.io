@@ -137,7 +137,7 @@ form.addEventListener('submit', async e => {
     }
     document.getElementById('okNombre').textContent = data.nombre || f.nombre;
     if (data.sinDescuento) {
-      document.getElementById('okTexto').innerHTML = 'Sus datos fueron actualizados.<br>Su vendedor de Praisa los confirmará con usted.';
+      document.getElementById('okTexto').innerHTML = (data.revision ? 'Recibimos sus datos.<br>Un asesor de Praisa los revisará y se comunicará con usted.' : 'Sus datos fueron actualizados.<br>Su vendedor de Praisa los confirmará con usted.');
       document.getElementById('okCodigo').style.display = 'none';
       document.getElementById('okUso').style.display = 'none';
       document.getElementById('okTip').textContent = 'Si tiene alguna consulta o desea cotizar, con gusto le atendemos.';
