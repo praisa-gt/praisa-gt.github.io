@@ -94,6 +94,7 @@ async function llamar(datos) {
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
     body: JSON.stringify({ ...datos, clave })
   });
+  if (r.status === 429) { const e = new Error('bloqueado'); e.bloqueado = true; throw e; }
   if (r.status === 401 || r.status === 403) { const e = new Error('clave'); e.clave = true; throw e; }
   const d = await r.json().catch(() => ({}));
   if (!r.ok && !d.error) throw new Error('servidor');
@@ -118,7 +119,7 @@ $('loginForm').addEventListener('submit', async e => {
     $('loginMsg').textContent = '';
     mostrarApp();
   } catch (x) {
-    mostrarLogin(x.clave ? 'Clave incorrecta.' : 'No se pudo conectar. Intente de nuevo.');
+    mostrarLogin(x.bloqueado ? 'Demasiados intentos con clave incorrecta. Espere 15 minutos.' : x.clave ? 'Clave incorrecta.' : 'No se pudo conectar. Intente de nuevo.');
   }
 });
 $('salir').addEventListener('click', () => { $('resultados').innerHTML = ''; mostrarLogin(''); });
