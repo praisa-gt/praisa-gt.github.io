@@ -182,7 +182,7 @@ $('buscarForm').addEventListener('submit', async e => {
     if (d.total > (d.resultados || []).length) $('msg').textContent = 'Hay más resultados; escriba una búsqueda más precisa.';
   } catch (x) {
     if (x.clave) mostrarLogin('Su sesión expiró o la clave cambió. Vuelva a entrar.');
-    else $('msg').textContent = 'No se pudo conectar. Intente de nuevo.';
+    else $('msg').textContent = x.bloqueado ? 'Bloqueado por intentos fallidos. Espere 15 minutos.' : 'No se pudo conectar. Intente de nuevo.';
   } finally { $('btnBuscar').disabled = false; }
 });
 
@@ -205,7 +205,7 @@ async function canjear(e) {
     pintar(d.resultados || [], true);
   } catch (x) {
     if (x.clave) mostrarLogin('Su sesión expiró o la clave cambió. Vuelva a entrar.');
-    else { msg.textContent = 'No se pudo conectar. Revise en la hoja antes de intentar de nuevo.'; btn.disabled = false; }
+    else { msg.textContent = x.bloqueado ? 'Bloqueado por intentos fallidos. Espere 15 minutos.' : 'No se pudo conectar. Revise en la hoja antes de intentar de nuevo.'; btn.disabled = false; }
   }
 }
 
