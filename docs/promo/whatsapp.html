@@ -78,7 +78,7 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
     <section class="card">
       <h1 style="font-size:16px">Mensajes</h1>
       <p class="plantilla" id="plantilla"></p>
-      <p class="help"><b>Abrir WhatsApp</b> abre el chat con el saludo ya escrito (sin enlace, para evitar bloqueos). Revíselo, envíelo y presione <b>Marcar enviado</b>. Si el cliente responde con interés, márquelo como <b>Respondió</b> y en la pestaña Respondieron use <b>Enviar enlace</b>.</p>
+      <p class="help"><b>Abrir WhatsApp</b> abre el chat con la presentación ya escrita (sin enlace, para evitar bloqueos). Envíela y presione <b>Marcar enviado</b>. Si confirman que sí es el contacto, márquelo como <b>Respondió</b> y en la pestaña Respondieron use <b>Enviar enlace</b>. Si dicen que es número equivocado o que no les escriban, use <b>Pidió no escribir</b>.</p>
     </section>
 
     <div class="tabs" role="group" aria-label="Filtrar">
@@ -96,10 +96,10 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
 <script>
 const ENDPOINT = 'https://serious-porpoise.pikapod.net/webhook/praisa-whatsapp';
 const ENLACE = 'https://praisa-gt.github.io/promo/?o=whatsapp';
-const mensaje = (empresa, nombre) => `Buen día${nombre ? ', ' + nombre : ''}. Le saluda el equipo de Praisa.\n\nHace un tiempo no atendemos a ${empresa} y quisimos saludarle y ponernos a sus órdenes. Tenemos un beneficio especial para usted, ¿le comparto los detalles?`;
-const mensajeEnlace = () => `¡Con gusto! Por actualizar sus datos le damos un 10% de descuento en su compra. Solo toma un minuto:\n${ENLACE}\n\nCualquier consulta, aquí estamos para servirle.`;
+const mensaje = (empresa) => `Buen día. Le saludamos de Praisa, Proveedores y Asesores Industriales; somos proveedores de válvulas, instrumentación y equipo para vapor aquí en Guatemala.\n\nTenemos este número como contacto de ${empresa}. ¿Nos podría confirmar si aún es el medio correcto para comunicarnos con ustedes?\n\nSi no es así, disculpe la molestia; no le volveremos a escribir. ¡Muchas gracias!`;
+const mensajeEnlace = () => `¡Muchas gracias por responder! Queremos ponernos nuevamente a sus órdenes y, como agradecimiento, tenemos un 10% de descuento en su compra al actualizar sus datos (toma un minuto):\n${ENLACE}\n\nCualquier consulta, con gusto le atendemos por aquí.`;
 const $ = (id) => document.getElementById(id);
-$('plantilla').textContent = '1) Saludo:\n' + mensaje('[empresa]', '[nombre]') + '\n\n2) Si responde con interés:\n' + mensajeEnlace();
+$('plantilla').textContent = '1) Presentación:\n' + mensaje('[empresa]') + '\n\n2) Si confirma que sí es el contacto:\n' + mensajeEnlace();
 
 let clave = '', quien = '', clientes = [], hoy = '', hoyN = 0, limite = 15, tab = 'pend', visibles = 30;
 try { clave = sessionStorage.getItem('praisa_clave_vend') || ''; } catch (e) {}
@@ -175,7 +175,7 @@ function fila(c, pos, lleno) {
   const a = document.createElement('div'); a.className = 'acc';
   if (!c.enviado && !c.noEscribir) {
     const w = document.createElement('a'); w.className = 'btn wa'; w.textContent = 'Abrir WhatsApp'; w.target = '_blank'; w.rel = 'noopener';
-    w.href = waLink(c, mensaje(nombreBonito(c.empresa), primerNombre(c.contacto)));
+    w.href = waLink(c, mensaje(nombreBonito(c.empresa)));
     if (lleno || !c.celulares.length) w.setAttribute('aria-disabled', 'true');
     a.append(w, boton('Marcar enviado', 'enviado', c, lleno), boton('No escribir', 'no', c));
   } else if (c.enviado && !c.respondio && !c.noEscribir) {
