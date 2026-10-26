@@ -78,7 +78,7 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
     <section class="card">
       <h1 style="font-size:16px">Mensajes</h1>
       <p class="plantilla" id="plantilla"></p>
-      <p class="help"><b>Abrir WhatsApp</b> abre el chat con la presentación ya escrita (sin enlace, para evitar bloqueos). Envíela y presione <b>Marcar enviado</b>. Si confirman que sí es el contacto, márquelo como <b>Respondió</b> y en la pestaña Respondieron use <b>Enviar enlace</b>. Si dicen que es número equivocado o que no les escriban, use <b>Pidió no escribir</b>.</p>
+      <p class="help"><b>Abrir WhatsApp</b> abre el chat con la presentación ya escrita (sin enlace, para evitar bloqueos). Envíela y presione <b>Marcar enviado</b>. Si confirman que sí es el contacto, márquelo como <b>Respondió</b> y en la pestaña Respondieron use <b>Enviar enlace</b>. Si dicen que es número equivocado o que no les escriban, use <b>Pidió no escribir</b>. Si WhatsApp avisa que el número no está en WhatsApp, pruebe el 2.º número (si hay) y si tampoco, use <b>No tiene WhatsApp</b>; no cuenta para el límite del día.</p>
     </section>
 
     <div class="tabs" role="group" aria-label="Filtrar">
@@ -170,6 +170,7 @@ function fila(c, pos, lleno) {
   d.append(chip(c.tramo));
   if (c.monto) d.append(chip('Q' + fmtQ.format(c.monto) + ' histórico'));
   if (c.tieneCorreo) d.append(chip('también recibe correo', 'mail'));
+  if (c.nota) d.append(chip(c.nota));
   if (c.enviado) d.append(chip('enviado ' + c.enviado.slice(8, 10) + '/' + c.enviado.slice(5, 7) + (c.enviadoPor ? ' · ' + c.enviadoPor : ''), 'ok'));
   t.append(e, d);
   const a = document.createElement('div'); a.className = 'acc';
@@ -177,7 +178,9 @@ function fila(c, pos, lleno) {
     const w = document.createElement('a'); w.className = 'btn wa'; w.textContent = 'Abrir WhatsApp'; w.target = '_blank'; w.rel = 'noopener';
     w.href = waLink(c, mensaje(nombreBonito(c.empresa)));
     if (lleno || !c.celulares.length) w.setAttribute('aria-disabled', 'true');
-    a.append(w, boton('Marcar enviado', 'enviado', c, lleno), boton('No escribir', 'no', c));
+    a.append(w);
+    if (c.celulares[1]) { const w2 = w.cloneNode(true); w2.textContent = 'Probar 2.º número'; w2.href = waLink({ celulares: [c.celulares[1]] }, mensaje(nombreBonito(c.empresa))); a.append(w2); }
+    a.append(boton('Marcar enviado', 'enviado', c, lleno), boton('No tiene WhatsApp', 'sinwa', c), boton('No escribir', 'no', c));
   } else if (c.enviado && !c.respondio && !c.noEscribir) {
     a.append(boton('Respondió', 'respondio', c), boton('Pidió no escribir', 'no', c), boton('Deshacer envío', 'deshacer', c));
   } else if (c.respondio && !c.noEscribir) {
