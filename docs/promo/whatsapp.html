@@ -76,9 +76,9 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
     </section>
 
     <section class="card">
-      <h1 style="font-size:16px">Mensaje</h1>
+      <h1 style="font-size:16px">Mensajes</h1>
       <p class="plantilla" id="plantilla"></p>
-      <p class="help">El botón <b>Abrir WhatsApp</b> abre el chat con este mensaje ya escrito. Revíselo (por ejemplo, el nombre si es una persona), envíelo y luego presione <b>Marcar enviado</b>.</p>
+      <p class="help"><b>Abrir WhatsApp</b> abre el chat con el saludo ya escrito (sin enlace, para evitar bloqueos). Revíselo, envíelo y presione <b>Marcar enviado</b>. Si el cliente responde con interés, márquelo como <b>Respondió</b> y en la pestaña Respondieron use <b>Enviar enlace</b>.</p>
     </section>
 
     <div class="tabs" role="group" aria-label="Filtrar">
@@ -96,15 +96,18 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
 <script>
 const ENDPOINT = 'https://serious-porpoise.pikapod.net/webhook/praisa-whatsapp';
 const ENLACE = 'https://praisa-gt.github.io/promo/?o=whatsapp';
-const mensaje = (empresa) => `Buen día, le saluda Gerber Agustín de Praisa (Proveedores y Asesores Industriales).\n\nHace un tiempo que no sabemos de ${empresa} y nos encantaría volver a atenderle. Hoy tenemos producto en stock, listo para entrega.\n\nSi actualiza sus datos (toma 1 minuto), le damos un 10% de descuento en su primera compra:\n${ENLACE}\n\nSi prefiere que no le escribamos por aquí, solo díganos. ¡Saludos!`;
+const mensaje = (empresa, nombre) => `Buen día${nombre ? ', ' + nombre : ''} 😊 Le saluda el equipo de Praisa.\n\nHace un tiempo no atendemos a ${empresa} y quisimos saludarle y ponernos a sus órdenes. Tenemos un beneficio especial para usted, ¿le comparto los detalles?`;
+const mensajeEnlace = () => `¡Con gusto! Por actualizar sus datos le damos un 10% de descuento en su compra. Solo toma un minuto:\n${ENLACE}\n\nCualquier consulta, aquí estamos para servirle.`;
 const $ = (id) => document.getElementById(id);
-$('plantilla').textContent = mensaje('[empresa]');
+$('plantilla').textContent = '1) Saludo:\n' + mensaje('[empresa]', '[nombre]') + '\n\n2) Si responde con interés:\n' + mensajeEnlace();
 
 let clave = '', quien = '', clientes = [], hoy = '', hoyN = 0, limite = 15, tab = 'pend', visibles = 30;
 try { clave = sessionStorage.getItem('praisa_clave_vend') || ''; } catch (e) {}
 
 const nombreBonito = (s) => String(s || '').replace(/,?\s*SOCIEDAD AN[OÓ]NIMA\.?$/i, '').replace(/,?\s*S\.\s?A\.?$/i, '').trim().toLowerCase().replace(/(^|\s|\()(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
-const fmtTel = (n) => n.slice(0, 4) + '-' + n.slice(4);
+const primerNombre = (s) => { const p = String(s || '').split(',')[0].trim().split(/\s+/)[0] || ''; return /^\p{L}{2,}$/u.test(p) ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ''; };
+const waLink = (c, txt) => 'https://wa.me/502' + (c.celulares[0] || '') + '?text=' + encodeURIComponent(txt);
+const fmtTel =(n) => n.slice(0, 4) + '-' + n.slice(4);
 const fmtQ = new Intl.NumberFormat('es-GT', { notation: 'compact', maximumFractionDigits: 1 });
 const grupo = (c) => c.noEscribir ? 'no' : c.respondio ? 'resp' : c.enviado ? 'env' : 'pend';
 
@@ -171,11 +174,16 @@ function fila(c, pos, lleno) {
   const a = document.createElement('div'); a.className = 'acc';
   if (!c.enviado && !c.noEscribir) {
     const w = document.createElement('a'); w.className = 'btn wa'; w.textContent = 'Abrir WhatsApp'; w.target = '_blank'; w.rel = 'noopener';
-    w.href = 'https://wa.me/502' + (c.celulares[0] || '') + '?text=' + encodeURIComponent(mensaje(nombreBonito(c.empresa)));
+    w.href = waLink(c, mensaje(nombreBonito(c.empresa), primerNombre(c.contacto)));
     if (lleno || !c.celulares.length) w.setAttribute('aria-disabled', 'true');
     a.append(w, boton('Marcar enviado', 'enviado', c, lleno), boton('No escribir', 'no', c));
   } else if (c.enviado && !c.respondio && !c.noEscribir) {
     a.append(boton('Respondió', 'respondio', c), boton('Pidió no escribir', 'no', c), boton('Deshacer envío', 'deshacer', c));
+  } else if (c.respondio && !c.noEscribir) {
+    const w = document.createElement('a'); w.className = 'btn wa'; w.textContent = 'Enviar enlace'; w.target = '_blank'; w.rel = 'noopener';
+    w.href = waLink(c, mensajeEnlace());
+    if (!c.celulares.length) w.setAttribute('aria-disabled', 'true');
+    a.append(w, boton('Reabrir', 'reabrir', c));
   } else {
     a.append(boton('Reabrir', 'reabrir', c));
   }
