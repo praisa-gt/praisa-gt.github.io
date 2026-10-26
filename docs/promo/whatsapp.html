@@ -96,7 +96,7 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
 <script>
 const ENDPOINT = 'https://serious-porpoise.pikapod.net/webhook/praisa-whatsapp';
 const ENLACE = 'https://praisa-gt.github.io/promo/?o=whatsapp';
-const mensaje = (empresa) => `Buen día. Le saludamos de Praisa, Proveedores y Asesores Industriales; somos proveedores de válvulas, instrumentación y equipo para vapor aquí en Guatemala.\n\nTenemos este número como contacto de ${empresa}. ¿Nos podría confirmar si aún es el medio correcto para comunicarnos con ustedes?\n\nSi no es así, disculpe la molestia; no le volveremos a escribir. ¡Muchas gracias!`;
+const mensaje = (empresa) => `Buen día. Le saludamos de Praisa, Proveedores y Asesores Industriales; somos proveedores de válvulas, instrumentación y equipo para vapor aquí en Guatemala.\n\nTenemos este número como contacto de ${empresa}. ¿Nos podría confirmar si aún es el medio correcto para comunicarnos con ustedes?\n\nSi no es así, le pedimos una disculpa por la molestia. ¡Muchas gracias y que tenga un excelente día!`;
 const mensajeEnlace = () => `¡Muchas gracias por responder! Queremos ponernos nuevamente a sus órdenes y, como agradecimiento, tenemos un 10% de descuento en su compra al actualizar sus datos (toma un minuto):\n${ENLACE}\n\nCualquier consulta, con gusto le atendemos por aquí.`;
 const $ = (id) => document.getElementById(id);
 $('plantilla').textContent = '1) Presentación:\n' + mensaje('[empresa]') + '\n\n2) Si confirma que sí es el contacto:\n' + mensajeEnlace();
