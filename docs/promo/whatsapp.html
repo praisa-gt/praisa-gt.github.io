@@ -96,7 +96,7 @@ button.main{background:var(--red);border-color:var(--red);color:#fff;font-size:1
 <script>
 const ENDPOINT = 'https://serious-porpoise.pikapod.net/webhook/praisa-whatsapp';
 const ENLACE = 'https://praisa-gt.github.io/promo/?o=whatsapp';
-const mensaje = (empresa, nombre) => `Buen día${nombre ? ', ' + nombre : ''} 😊 Le saluda el equipo de Praisa.\n\nHace un tiempo no atendemos a ${empresa} y quisimos saludarle y ponernos a sus órdenes. Tenemos un beneficio especial para usted, ¿le comparto los detalles?`;
+const mensaje = (empresa, nombre) => `Buen día${nombre ? ', ' + nombre : ''}. Le saluda el equipo de Praisa.\n\nHace un tiempo no atendemos a ${empresa} y quisimos saludarle y ponernos a sus órdenes. Tenemos un beneficio especial para usted, ¿le comparto los detalles?`;
 const mensajeEnlace = () => `¡Con gusto! Por actualizar sus datos le damos un 10% de descuento en su compra. Solo toma un minuto:\n${ENLACE}\n\nCualquier consulta, aquí estamos para servirle.`;
 const $ = (id) => document.getElementById(id);
 $('plantilla').textContent = '1) Saludo:\n' + mensaje('[empresa]', '[nombre]') + '\n\n2) Si responde con interés:\n' + mensajeEnlace();
@@ -105,7 +105,8 @@ let clave = '', quien = '', clientes = [], hoy = '', hoyN = 0, limite = 15, tab 
 try { clave = sessionStorage.getItem('praisa_clave_vend') || ''; } catch (e) {}
 
 const nombreBonito = (s) => String(s || '').replace(/,?\s*SOCIEDAD AN[OÓ]NIMA\.?$/i, '').replace(/,?\s*S\.\s?A\.?$/i, '').trim().toLowerCase().replace(/(^|\s|\()(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
-const primerNombre = (s) => { const p = String(s || '').split(',')[0].trim().split(/\s+/)[0] || ''; return /^\p{L}{2,}$/u.test(p) ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ''; };
+const TITULOS = /^(sr|sra|srta|srs|lic|licda|ing|inga|dr|dra|arq|don|doña|dona|señor|señora|sres|ingeniero|ingeniera|licenciado|licenciada|doctor|doctora)\.?$/i;
+const primerNombre = (s) => { const t = String(s || '').split(',')[0].trim().split(/\s+/).filter((w) => !TITULOS.test(w)); const p = t[0] || ''; return /^\p{L}{2,}$/u.test(p) ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ''; };
 const waLink = (c, txt) => 'https://wa.me/502' + (c.celulares[0] || '') + '?text=' + encodeURIComponent(txt);
 const fmtTel =(n) => n.slice(0, 4) + '-' + n.slice(4);
 const fmtQ = new Intl.NumberFormat('es-GT', { notation: 'compact', maximumFractionDigits: 1 });
