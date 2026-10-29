@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Praisa IA Interno</title>
+<title>Praisa IA</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C70D29'/%3E%3Ctext x='16' y='23' font-size='20' font-family='Arial' font-weight='700' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
@@ -502,7 +502,7 @@ body::before,body::after{display:block!important}
       <div class="composer-wrap">
         <form id="composer" class="composer" autocomplete="off">
           <label class="sr-only" for="msg">Escribe tu consulta</label>
-          <textarea id="msg" rows="1" placeholder="Pregunta por un producto, cliente o cotización"></textarea>
+          <textarea id="msg" rows="1" placeholder="Pregunta por un producto, una serie o un catálogo"></textarea>
           <button type="submit" id="sendBtn" class="send" aria-label="Enviar consulta">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
           </button>
@@ -553,9 +553,10 @@ body::before,body::after{display:block!important}
   'use strict';
 
   // ===== Configuración =====
-  // Dirección de producción del nodo "Chat - Entrada" en n8n (Production URL).
+  // Dirección de producción del nodo "Chat personal - Entrada" del flujo Praisa IA Personal (sin CAF).
+  // El asistente con CAF queda aparte, solo para administración y con inicio de sesión de Google.
   var CONFIG = {
-    chatUrl: 'https://serious-porpoise.pikapod.net/webhook/8f4d8f21-7b6a-4f47-9d2e-166000000167/chat',
+    chatUrl: 'https://serious-porpoise.pikapod.net/webhook/3d8b6f1a-92c4-4e57-b0a9-6c1f2e7d4a58/chat',
     timeoutMs: 120000
   };
   var AUTH_KEY = 'praisa_ia_auth';
@@ -692,8 +693,9 @@ body::before,body::after{display:block!important}
   var $ = function (id) { return document.getElementById(id); };
   var main = $('main'), log = $('log'), msg = $('msg'), sendBtn = $('sendBtn');
   var loginDlg = $('login'), loginErr = $('loginErr');
-  var token = '';
-  try { token = sessionStorage.getItem(AUTH_KEY) || ''; } catch (e) {}
+  // Sin inicio de sesión: es para todo el personal y no tiene acceso a CAF.
+  var token = 'abierto';
+  try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
   var sessionId = newId();
   var busy = false, pending = '';
 
@@ -730,14 +732,14 @@ body::before,body::after{display:block!important}
 
   // ===== Atajos y sugerencias =====
   var ATAJOS = [
-    { label: 'Consultar un producto', hint: 'Información del producto [código]', icon: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8' },
-    { label: 'Existencia por código', hint: '¿Cuántas unidades hay de [código]?', icon: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5' },
-    { label: 'Historial de un cliente', hint: 'Historial del cliente [nombre o cuenta]', icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2' },
-    { label: 'Cotizar', hint: 'Cotiza [código] para [cliente]', icon: 'M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5M9 13h6M9 17h6' },
-    { label: 'Sin movimiento', hint: 'Productos sin movimiento', icon: 'M3 7l6 6 4-4 8 8M21 12v5h-5' },
-    { label: 'Consulta técnica', hint: 'Válvula de bola de 2 pulgadas roscada para vapor', icon: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19V5' }
+    { label: 'Ficha técnica', hint: '¿Qué dice la ficha técnica de [modelo o serie]?', icon: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19V5' },
+    { label: 'Elegir un producto', hint: '¿Qué [válvula/trampa/manómetro] le ofrezco a un cliente para [servicio, presión y temperatura]?', icon: 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8' },
+    { label: 'Comparar series', hint: 'Diferencias entre [serie A] y [serie B]', icon: 'M3 7l6 6 4-4 8 8M21 12v5h-5' },
+    { label: 'Convertir unidades', hint: 'Convierte [valor y unidad] a [unidad]', icon: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5' },
+    { label: 'Redactar un correo', hint: 'Redacta un correo para un cliente sobre [tema]', icon: 'M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8zM14 3v5h5M9 13h6M9 17h6' },
+    { label: 'Consulta técnica', hint: 'Válvula de bola de 2 pulgadas roscada para vapor', icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 7v5l3 2' }
   ];
-  var CHIPS = [['Productos sin movimiento', 'Productos sin movimiento'], ['Comparar dos series', 'Diferencia entre una válvula de mariposa DelVal serie 50 y una serie 56'], ['Trampas en existencia', 'Trampas termodinámicas en existencia']];
+  var CHIPS = [['Comparar dos series', 'Diferencia entre una válvula de mariposa DelVal serie 50 y una serie 56'], ['Elegir una trampa', 'Un cliente necesita drenar una línea principal de vapor a 10 bar. ¿Qué trampa le ofrezco y qué datos le pido?'], ['Ficha para un cliente', 'Prepárame un resumen técnico corto de un manómetro de 4 pulgadas con glicerina para enviárselo a un cliente']];
 
   ATAJOS.forEach(function (a) {
     var b = el('button', 'atajo'); b.type = 'button';
@@ -774,11 +776,10 @@ body::before,body::after{display:block!important}
     log.appendChild(row); scrollEnd(); return row;
   }
   function sendFeedback(valoracion, comentario, pregunta, respuesta) {
-    var usuario = '';
-    try { usuario = atob(token).split(':')[0]; } catch (e) {}
+    var usuario = 'personal';
     return fetch(FEEDBACK_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + token },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ valoracion: valoracion, comentario: comentario || '', usuario: usuario, pregunta: String(pregunta || '').slice(0, 1500), respuesta: String(respuesta || '').slice(0, 3000), pagina: 'asistente-v2' })
     }).then(function (r) { return r.ok; }).catch(function () { return false; });
   }
@@ -884,7 +885,7 @@ body::before,body::after{display:block!important}
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { done(true); }, fallback);
     else fallback();
   }
-  var STEPS = [[0, 'Entendiendo tu consulta…'], [4000, 'Consultando CAF y documentos…'], [12000, 'Armando la respuesta…'], [30000, 'Sigue trabajando, esta consulta es larga…']];
+  var STEPS = [[0, 'Entendiendo tu consulta…'], [4000, 'Buscando en los catálogos…'], [12000, 'Armando la respuesta…'], [30000, 'Sigue trabajando, esta consulta es larga…']];
   function addTyping() {
     var row = el('div', 'msg bot');
     row.appendChild(el('div', 'avatar', 'IA'));
@@ -995,17 +996,14 @@ body::before,body::after{display:block!important}
     try {
       var res = await fetch(CONFIG.chatUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'sendMessage', sessionId: sessionId, chatInput: text }),
         signal: ctrl.signal
       });
       clearTimeout(timer);
       typing.remove();
       if (res.status === 401 || res.status === 403) {
-        token = ''; try { sessionStorage.removeItem(AUTH_KEY); } catch (e) {}
-        $('logoutBtn').hidden = true; $('fbBtn').hidden = true; renderHist();
-        userRow.remove(); if (!log.children.length) showEmpty();
-        pending = text; openLogin('Usuario o clave incorrectos.');
+        addBot('El asistente no aceptó la conexión desde esta página. Avisa a quien administra n8n.', true);
         return;
       }
       if (!res.ok) { addBot(describeError(res.status), true); return; }
@@ -1106,7 +1104,7 @@ body::before,body::after{display:block!important}
 
   // ===== Inicio =====
   renderHist();
-  if (token) { $('logoutBtn').hidden = false; $('fbBtn').hidden = false; msg.focus(); } else { openLogin(''); }
+  $('logoutBtn').hidden = true; $('fbBtn').hidden = false; msg.focus();
 })();
 </script>
 </body>
