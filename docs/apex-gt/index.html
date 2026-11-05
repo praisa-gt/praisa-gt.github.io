@@ -52,6 +52,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 #keys{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));
   font-size:12px;color:var(--muted);padding:10px 14px;line-height:1.9}
 kbd{font-family:var(--display);font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--fg)}
+#speedLines{position:absolute;inset:0;width:100%;height:100%;display:block}
 #count{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:900;
   font-size:min(30vw,180px);color:var(--fg);text-shadow:0 0 40px rgba(34,211,238,.6)}
 #count.go{color:var(--accent)}
@@ -174,6 +175,7 @@ tr.me td:first-child{color:var(--accent)}
     <button id="pauseBtn" class="panel" aria-label="Pausa">II</button>
   </div>
   <div id="wrong" class="panel" hidden>SENTIDO CONTRARIO</div>
+  <canvas id="speedLines" aria-hidden="true"></canvas>
   <div id="count"></div>
   <div class="speedo panel">
     <div id="spd">000</div>
@@ -322,7 +324,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const HORIZON = new THREE.Color(0xb4cbe0), ZENITH = new THREE.Color(0x1d4075);
 scene.fog = new THREE.Fog(HORIZON, 200, 900);
-const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 2200);
+const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.5, 2200);
 
 function skyGeo(r){
   const g = new THREE.SphereGeometry(r, 32, 16), p = g.attributes.position, cols = [], c = new THREE.Color();
@@ -415,7 +417,7 @@ function noise(x, w, h, base, spread, tint){
 {
   const tex = canvasTex(128, 128, (x, w, h) => noise(x, w, h, 70, 40, [0.62, 1.0, 0.5]));
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(300, 300);
-  const g = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({ map:tex, roughness:1, metalness:0, envMapIntensity:0.3 }));
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({ map:tex, roughness:1, metalness:0, envMapIntensity:0.3, polygonOffset:true, polygonOffsetFactor:4, polygonOffsetUnits:4 }));
   g.rotation.x = -Math.PI / 2; g.receiveShadow = true; scene.add(g);
 }
 
@@ -462,14 +464,14 @@ function stripes(o1, o2, y1, y2, colA, colB, len, vertical){
     x.fillRect(8, 0, 7, h); x.fillRect(w - 15, 0, 7, h); x.fillRect(125, 0, 6, 240);
   });
   tex.wrapS = THREE.ClampToEdgeWrapping; tex.wrapT = THREE.RepeatWrapping;
-  const road = new THREE.Mesh(ribbon(-HALF, HALF, 0.03, 24), new THREE.MeshStandardMaterial({ map:tex, roughness:0.88, metalness:0, envMapIntensity:0.5 }));
+  const road = new THREE.Mesh(ribbon(-HALF, HALF, 0.08, 24), new THREE.MeshStandardMaterial({ map:tex, roughness:0.88, metalness:0, envMapIntensity:0.5 }));
   road.receiveShadow = true; scene.add(road);
 
   const curbMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.7 });
   [[HALF, HALF + CURB], [-HALF - CURB, -HALF]].forEach(([a, b]) => {
-    const m = new THREE.Mesh(stripes(a, b, 0.035, 0, 0xd7263d, 0xf5f5f5, 3), curbMat); m.receiveShadow = true; scene.add(m);
+    const m = new THREE.Mesh(stripes(a, b, 0.09, 0, 0xd7263d, 0xf5f5f5, 3), curbMat); m.receiveShadow = true; scene.add(m);
   });
-  const run = new THREE.Mesh(ribbon(-WALL, WALL, 0.012, 24), new THREE.MeshStandardMaterial({ color:0x5d7a43, roughness:1, envMapIntensity:0.3 }));
+  const run = new THREE.Mesh(ribbon(-WALL, WALL, 0.04, 24), new THREE.MeshStandardMaterial({ color:0x5d7a43, roughness:1, envMapIntensity:0.3, polygonOffset:true, polygonOffsetFactor:2, polygonOffsetUnits:2 }));
   run.receiveShadow = true; scene.add(run);
   const wallMat = new THREE.MeshStandardMaterial({ vertexColors:true, roughness:0.55, side:THREE.DoubleSide });
   [WALL, -WALL].forEach(o => { const w = new THREE.Mesh(stripes(o, o, 0, 1.1, 0x1e40af, 0xf1f5f9, 6, true), wallMat); w.castShadow = true; w.receiveShadow = true; scene.add(w); });
@@ -481,7 +483,7 @@ function stripes(o1, o2, y1, y2, colA, colB, len, vertical){
   chk.magFilter = THREE.NearestFilter;
   const line = new THREE.Mesh(new THREE.PlaneGeometry(2 * HALF, 2.5), new THREE.MeshStandardMaterial({ map:chk, roughness:0.8 }));
   line.geometry.rotateX(-Math.PI / 2);
-  line.position.set(SP[0].x, 0.04, SP[0].z); line.rotation.y = TH[0]; line.receiveShadow = true; scene.add(line);
+  line.position.set(SP[0].x, 0.1, SP[0].z); line.rotation.y = TH[0]; line.receiveShadow = true; scene.add(line);
 
   const g = new THREE.Group(); g.position.copy(SP[0]); g.rotation.y = TH[0];
   const dark = new THREE.MeshStandardMaterial({ color:0x1b2233, roughness:0.5, metalness:0.6 });
@@ -506,6 +508,29 @@ function stripes(o1, o2, y1, y2, colA, colB, len, vertical){
   }
   const roof = new THREE.Mesh(new THREE.BoxGeometry(14, 0.4, 94), dark); roof.position.set(7, 11, 0); roof.castShadow = true; stand.add(roof);
   scene.add(stand);
+}
+
+// Postes de luz a ambos lados de la pista: dan referencia de velocidad al pasar
+{
+  const step = Math.round(28 / ds), idxs = [];
+  for (let i = 0; i < N; i += step) idxs.push(i);
+  const count = idxs.length * 2;
+  const metal = new THREE.MeshStandardMaterial({ color:0x9aa3b2, metalness:0.7, roughness:0.4 });
+  const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16, 0.22, 9, 8), metal, count);
+  const arms = new THREE.InstancedMesh(new THREE.BoxGeometry(0.18, 0.18, 3.2), metal, count);
+  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.18, 1.1), new THREE.MeshBasicMaterial({ color:0xfff4d6 }), count);
+  const d = new THREE.Object3D(); let k = 0;
+  idxs.forEach(i => [-1, 1].forEach(side => {
+    const P = SP[i], n = NR[i], off = side * (WALL + 1.2);
+    const x = P.x + n.x * off, z = P.z + n.z * off;
+    d.rotation.set(0, 0, 0); d.position.set(x, 4.5, z); d.updateMatrix(); poles.setMatrixAt(k, d.matrix);
+    d.rotation.set(0, Math.atan2(-n.x * side, -n.z * side), 0);
+    d.position.set(x - n.x * side * 1.5, 8.9, z - n.z * side * 1.5); d.updateMatrix(); arms.setMatrixAt(k, d.matrix);
+    d.position.set(x - n.x * side * 2.9, 8.75, z - n.z * side * 2.9); d.updateMatrix(); lamps.setMatrixAt(k, d.matrix);
+    k++;
+  }));
+  poles.castShadow = true;
+  scene.add(poles, arms, lamps);
 }
 
 // Árboles (instanciados para que rinda en celular)
@@ -1071,6 +1096,26 @@ function toast(msg){
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3200);
 }
 
+// Líneas de velocidad en los bordes de la pantalla
+const sl = $('speedLines'), slx = sl.getContext('2d');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function speedLines(sf, nitro){
+  const w = sl.clientWidth, h = sl.clientHeight;
+  if (sl.width !== w || sl.height !== h){ sl.width = w; sl.height = h; }
+  slx.clearRect(0, 0, w, h);
+  const amt = clamp((sf - 0.55) / 0.5, 0, 1) + (nitro ? 0.6 : 0);
+  if (amt <= 0 || reduceMotion) return;
+  const cx = w / 2, cy = h * 0.48, R = Math.hypot(w, h) / 2, n = Math.round(14 + amt * 30), a1 = Math.min(1, amt);
+  slx.lineCap = 'round';
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2, r0 = R * (0.55 + Math.random() * 0.3), len = R * (0.12 + Math.random() * 0.25) * a1;
+    const x0 = cx + Math.cos(a) * r0, y0 = cy + Math.sin(a) * r0 * 0.75;
+    slx.strokeStyle = (nitro ? 'rgba(160,240,255,' : 'rgba(255,255,255,') + ((0.12 + 0.22 * Math.random()) * a1).toFixed(3) + ')';
+    slx.lineWidth = 1 + Math.random() * 2;
+    slx.beginPath(); slx.moveTo(x0, y0); slx.lineTo(x0 + Math.cos(a) * len, y0 + Math.sin(a) * len * 0.75); slx.stroke();
+  }
+}
+
 // ---------- Bucle ----------
 const clock = new THREE.Clock();
 function update(dt){
@@ -1101,15 +1146,18 @@ function update(dt){
     placePlayer(dt);
     audio.update(engineState());
 
-    camYaw += wrapA(player.h - camYaw) * (1 - Math.exp(-dt * 6));
+    camYaw += wrapA(player.h - camYaw) * (1 - Math.exp(-dt * 7));
     const cf = Math.sin(camYaw), cz = Math.cos(camYaw);
-    const shake = player.nitroOn ? 0.06 : 0;
-    camera.position.set(player.pos.x - cf * 10.5 + (Math.random() - 0.5) * shake, 4.1 + (Math.random() - 0.5) * shake, player.pos.z - cz * 10.5);
-    camera.lookAt(player.pos.x + cf * 6, 1.3, player.pos.z + cz * 6);
-    const c = CARS[player.type];
-    const fovT = 66 + 12 * clamp(Math.abs(player.v) / c.vmax, 0, 1.3) + (player.nitroOn ? 8 : 0);
+    const c = CARS[player.type], sf = clamp(Math.abs(player.v) / c.vmax, 0, 1.3);
+    // Cámara baja y cerca del auto; a alta velocidad se aleja un poco y abre el ángulo
+    const back = 7.2 + sf * 1.6, high = 2.6 + sf * 0.3;
+    const shake = (player.nitroOn ? 0.09 : 0) + sf * 0.025;
+    camera.position.set(player.pos.x - cf * back + (Math.random() - 0.5) * shake, high + (Math.random() - 0.5) * shake, player.pos.z - cz * back);
+    camera.lookAt(player.pos.x + cf * 9, 1.0, player.pos.z + cz * 9);
+    const fovT = 60 + 24 * sf + (player.nitroOn ? 10 : 0);
     camera.fov += (fovT - camera.fov) * Math.min(1, dt * 4);
     camera.updateProjectionMatrix();
+    speedLines(state === 'race' ? sf : 0, player.nitroOn);
 
     updateHud();
     if (state === 'done'){
