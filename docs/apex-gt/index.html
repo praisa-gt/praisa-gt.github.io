@@ -39,7 +39,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
   display:flex;gap:8px;align-items:flex-start}
 #mini{display:block;width:132px;height:132px}
 .mini-wrap{padding:6px}
-#pauseBtn{pointer-events:auto;width:44px;height:44px;border-radius:12px;font-family:var(--display);font-weight:900;font-size:14px;letter-spacing:.1em}
+#soundBtn.off{opacity:.45;text-decoration:line-through}
+#pauseBtn,#soundBtn{pointer-events:auto;width:44px;height:44px;border-radius:12px;font-family:var(--display);font-weight:900;font-size:14px;letter-spacing:.1em}
 .speedo{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));
   padding:8px 26px 12px;text-align:center;min-width:190px}
 #spd{font-family:var(--display);font-weight:900;font-size:52px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
@@ -114,6 +115,8 @@ h1{font-family:var(--display);font-weight:900;font-size:clamp(48px,9vw,96px);lin
   font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.12em}
 .ghost:hover{background:rgba(255,255,255,.1)}
 .note{font-size:12px;color:var(--muted);margin:0;line-height:1.5}
+.credits{font-size:11px}
+.credits a{color:var(--muted);text-decoration:underline}
 .dialog{width:100%;max-width:440px;padding:24px;display:flex;flex-direction:column;gap:14px;background:rgba(8,14,28,.9)}
 .dialog h2{font-family:var(--display);font-weight:900;font-size:26px;margin:0;letter-spacing:.04em}
 .btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -167,6 +170,7 @@ tr.me td:first-child{color:var(--accent)}
   </div>
   <div class="hud-tr">
     <div class="panel mini-wrap"><canvas id="mini" width="264" height="264" aria-label="Mapa del circuito"></canvas></div>
+    <button id="soundBtn" class="panel" aria-label="Sonido" aria-pressed="true">♪</button>
     <button id="pauseBtn" class="panel" aria-label="Pausa">II</button>
   </div>
   <div id="wrong" class="panel" hidden>SENTIDO CONTRARIO</div>
@@ -229,6 +233,7 @@ tr.me td:first-child{color:var(--accent)}
       </div>
       <p class="status" id="netStatus" role="status"></p>
       <p class="note">Hasta 4 pilotos por sala; los lugares libres los llenan rivales de IA.</p>
+      <p class="note credits">Modelo 3D: <a href="https://sketchfab.com/3d-models/generic-sport-car-low-poly-7ad3bfb2bd7449c19698fc7d0592a601" target="_blank" rel="noopener">Generic Sport Car Low Poly</a> por Han66st, licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
     </div>
   </div>
 </div>
@@ -278,6 +283,7 @@ tr.me td:first-child{color:var(--accent)}
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
 (() => {
 'use strict';
@@ -337,6 +343,11 @@ scene.add(sky);
   env.add(new THREE.Mesh(skyGeo(10), new THREE.MeshBasicMaterial({ vertexColors:true, side:THREE.BackSide })));
   const sunBall = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 8), new THREE.MeshBasicMaterial({ color:0xffffff }));
   sunBall.position.set(5, 7, 3); env.add(sunBall);
+  // Paneles de luz para que la pintura refleje líneas brillantes
+  const panel = new THREE.MeshBasicMaterial({ color:0xffffff, side:THREE.DoubleSide });
+  [[0, 6, -2, 9, 0.6], [-6, 4, 3, 0.5, 7], [6, 3.5, -4, 0.5, 6]].forEach(([x, y, z, w, d]) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, d), panel); p.position.set(x, y, z); env.add(p);
+  });
   const ground = new THREE.Mesh(new THREE.CircleGeometry(10, 24), new THREE.MeshBasicMaterial({ color:0x2a3d22, side:THREE.DoubleSide }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -1; env.add(ground);
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -523,36 +534,264 @@ function stripes(o1, o2, y1, y2, colA, colB, len, vertical){
 
 // ---------- Autos ----------
 const WHEEL_R = 0.43;
+let CAR_TPL = null;     // plantilla del modelo 3D cargado (.glb); null = autos simples de respaldo
+
+// Prepara el modelo: deja una sola versión, lo orienta hacia +Z, lo escala a 4.5 m y ubica las llantas
+function prepareTemplate(root){
+  root.updateMatrixWorld(true);
+  const bodies = [];
+  root.traverse(o => { if (/body/i.test(o.name) && !(o.parent && /body/i.test(o.parent.name))) bodies.push(o); });
+  if (!bodies.length) throw new Error('El modelo no tiene carrocería');
+  bodies.slice(1).forEach(b => b.parent.remove(b));
+  const body = bodies[0];
+  root.updateMatrixWorld(true);
+  const box0 = new THREE.Box3().setFromObject(root), c0 = box0.getCenter(new THREE.Vector3());
+  let lamp = null; body.traverse(o => { if (!lamp && o.isMesh && /light/i.test(o.material.name)) lamp = o; });
+  let ang;
+  if (lamp){ const lc = new THREE.Box3().setFromObject(lamp).getCenter(new THREE.Vector3()); ang = Math.atan2(lc.x - c0.x, lc.z - c0.z); }
+  else { const s0 = box0.getSize(new THREE.Vector3()); ang = s0.x > s0.z ? Math.PI / 2 : 0; }
+  const pivot = new THREE.Group(); pivot.add(root); pivot.rotation.y = -ang; pivot.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(pivot);
+  pivot.scale.setScalar(4.5 / box.getSize(new THREE.Vector3()).z); pivot.updateMatrixWorld(true);
+  box.setFromObject(pivot);
+  const c = box.getCenter(new THREE.Vector3());
+  pivot.position.set(-c.x, -box.min.y, -c.z);
+  const group = new THREE.Group(); group.add(pivot); group.updateMatrixWorld(true);
+
+  // Pintura = material de la pieza más grande de la carrocería (sin contar llantas)
+  let paint = null, most = 0, wheelR = 0.35;
+  body.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    let inWheel = false; for (let p = o.parent; p; p = p.parent) if (/wheel/i.test(p.name)) inWheel = true;
+    const n = o.geometry.attributes.position.count;
+    if (!inWheel && n > most){ most = n; paint = o.material.name; }
+    const mn = o.material.name || '';
+    if (/light/i.test(mn)){ o.material = o.material.clone(); o.material.emissive = new THREE.Color(0xf2f8ff); o.material.emissiveIntensity = 2.2; }
+    if (/brake/i.test(mn)){ o.material = o.material.clone(); o.material.emissive = new THREE.Color(0xff1030); o.material.emissiveIntensity = 1.6; }
+  });
+  // Llantas: eje = dirección más delgada del rin; sentido según el avance hacia +Z
+  body.traverse(o => {
+    if (!/wheel/i.test(o.name) || !o.children.some(k => k.isMesh)) return;
+    let axisIdx = 1, best = Infinity, tire = null, tireSize = 0;
+    o.children.forEach(k => {
+      if (!k.isMesh) return;
+      k.geometry.computeBoundingBox();
+      const s = k.geometry.boundingBox.getSize(new THREE.Vector3()).toArray();
+      const ratio = Math.min(...s) / Math.max(...s);
+      if (ratio < best){ best = ratio; axisIdx = s.indexOf(Math.min(...s)); }
+      if (Math.max(...s) > tireSize){ tireSize = Math.max(...s); tire = k; }
+    });
+    const ctr = tire.geometry.boundingBox.getCenter(new THREE.Vector3());
+    const axis = [0, 0, 0]; axis[axisIdx] = 1;
+    const wa = new THREE.Vector3().fromArray(axis).transformDirection(o.matrixWorld);
+    wheelR = new THREE.Box3().setFromObject(tire).getSize(new THREE.Vector3()).y / 2;
+    o.userData.spin = { c:ctr.toArray(), axis, sign:Math.sign(wa.x) || 1 };
+  });
+  return { group, paint, wheelR, rearZ: box.min.z - c.z };
+}
+function loadCarModel(){
+  return new Promise(res => {
+    if (!THREE.GLTFLoader) return res(null);
+    const t = setTimeout(() => res(null), 15000);
+    new THREE.GLTFLoader().load('assets/sport-car.glb',
+      g => { clearTimeout(t); try { res(prepareTemplate(g.scene)); } catch(e){ console.warn(e); res(null); } },
+      undefined,
+      e => { clearTimeout(t); console.warn('No se pudo cargar el modelo del auto', e); res(null); });
+  });
+}
+
 function makeCar(color){
   const g = new THREE.Group(), chassis = new THREE.Group(); g.add(chassis);
-  const paint = new THREE.MeshPhysicalMaterial({ color, metalness:0.55, roughness:0.28, clearcoat:1, clearcoatRoughness:0.06 });
-  const dark  = new THREE.MeshStandardMaterial({ color:0x111318, roughness:0.6, metalness:0.3 });
-  const glass = new THREE.MeshPhysicalMaterial({ color:0x0b1220, metalness:0.3, roughness:0.05, clearcoat:1 });
   const add = (geo, mat, x, y, z, cast = true, parent = chassis) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; parent.add(m); return m; };
-  add(new THREE.BoxGeometry(2.0, 0.5, 4.4), paint, 0, 0.62, 0);
-  add(new THREE.BoxGeometry(1.9, 0.26, 0.6), paint, 0, 0.5, 2.45);
-  add(new THREE.BoxGeometry(1.5, 0.46, 1.9), glass, 0, 1.08, -0.35);
-  add(new THREE.BoxGeometry(2.2, 0.08, 0.55), dark, 0, 1.32, -2.05);
-  add(new THREE.BoxGeometry(0.08, 0.4, 0.3), dark, -0.7, 1.08, -2.05);
-  add(new THREE.BoxGeometry(0.08, 0.4, 0.3), dark,  0.7, 1.08, -2.05);
-  const head = new THREE.MeshBasicMaterial({ color:0xe6f6ff }), tail = new THREE.MeshBasicMaterial({ color:0xff2040 });
-  [-0.62, 0.62].forEach(x => { add(new THREE.BoxGeometry(0.5, 0.12, 0.05), head, x, 0.72, 2.21, false); add(new THREE.BoxGeometry(0.55, 0.12, 0.05), tail, x, 0.72, -2.21, false); });
-  const tire = new THREE.MeshStandardMaterial({ color:0x15161a, roughness:0.9 }), rim = new THREE.MeshStandardMaterial({ color:0xb8c0cc, metalness:0.9, roughness:0.3 });
-  const tg = new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 0.36, 18); tg.rotateZ(Math.PI / 2);
-  const rg = new THREE.BoxGeometry(0.38, 0.5, 0.12);
-  const wheels = [];
-  [[-1.02, 1.4], [1.02, 1.4], [-1.02, -1.4], [1.02, -1.4]].forEach(([x, z]) => {
-    const w = new THREE.Group(); w.position.set(x, WHEEL_R, z);
-    const t = new THREE.Mesh(tg, tire); t.castShadow = true; w.add(t);
-    w.add(new THREE.Mesh(rg, rim));
-    g.add(w); wheels.push(w);
-  });
+  const wheels = [], modelWheels = [];
+  let rearZ = -2.2;
+  if (CAR_TPL){
+    const m = CAR_TPL.group.clone(true);
+    const paint = new THREE.MeshPhysicalMaterial({ color, metalness:0.6, roughness:0.22, clearcoat:1, clearcoatRoughness:0.03 });
+    m.traverse(o => {
+      if (o.isMesh && o.material.name === CAR_TPL.paint) o.material = paint;
+      if (o.userData.spin){ o.updateMatrix(); o.matrixAutoUpdate = false; modelWheels.push({ o, base:o.matrix.clone(), a:0, ...o.userData.spin }); }
+    });
+    chassis.add(m);
+    rearZ = CAR_TPL.rearZ;
+  } else {
+    const paint = new THREE.MeshPhysicalMaterial({ color, metalness:0.55, roughness:0.28, clearcoat:1, clearcoatRoughness:0.06 });
+    const dark  = new THREE.MeshStandardMaterial({ color:0x111318, roughness:0.6, metalness:0.3 });
+    const glass = new THREE.MeshPhysicalMaterial({ color:0x0b1220, metalness:0.3, roughness:0.05, clearcoat:1 });
+    add(new THREE.BoxGeometry(2.0, 0.5, 4.4), paint, 0, 0.62, 0);
+    add(new THREE.BoxGeometry(1.9, 0.26, 0.6), paint, 0, 0.5, 2.45);
+    add(new THREE.BoxGeometry(1.5, 0.46, 1.9), glass, 0, 1.08, -0.35);
+    add(new THREE.BoxGeometry(2.2, 0.08, 0.55), dark, 0, 1.32, -2.05);
+    const head = new THREE.MeshBasicMaterial({ color:0xe6f6ff }), tail = new THREE.MeshBasicMaterial({ color:0xff2040 });
+    [-0.62, 0.62].forEach(x => { add(new THREE.BoxGeometry(0.5, 0.12, 0.05), head, x, 0.72, 2.21, false); add(new THREE.BoxGeometry(0.55, 0.12, 0.05), tail, x, 0.72, -2.21, false); });
+    const tire = new THREE.MeshStandardMaterial({ color:0x15161a, roughness:0.9 });
+    const tg = new THREE.CylinderGeometry(WHEEL_R, WHEEL_R, 0.36, 18); tg.rotateZ(Math.PI / 2);
+    [[-1.02, 1.4], [1.02, 1.4], [-1.02, -1.4], [1.02, -1.4]].forEach(([x, z]) => {
+      const w = new THREE.Group(); w.position.set(x, WHEEL_R, z);
+      const t = new THREE.Mesh(tg, tire); t.castShadow = true; w.add(t);
+      g.add(w); wheels.push(w);
+    });
+  }
   const flameMat = new THREE.MeshBasicMaterial({ color:0x67e8f9, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false });
-  const fg = new THREE.ConeGeometry(0.22, 1.6, 10); fg.rotateX(-Math.PI / 2);
-  const flames = [-0.5, 0.5].map(x => add(fg, flameMat, x, 0.55, -3.0, false));
+  const fg = new THREE.ConeGeometry(0.2, 1.6, 10); fg.rotateX(-Math.PI / 2);
+  const flames = [-0.45, 0.45].map(x => add(fg, flameMat, x, 0.45, rearZ - 0.7, false));
   flames.forEach(f => f.visible = false);
-  g.userData = { chassis, wheels, flames };
+  g.userData = { chassis, wheels, modelWheels, flames };
   return g;
+}
+// Gira las llantas según la distancia recorrida
+const _m1 = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _m3 = new THREE.Matrix4(), _ax = new THREE.Vector3();
+function rollWheels(mesh, ds){
+  const u = mesh.userData;
+  u.wheels.forEach(w => w.rotation.x += ds / WHEEL_R);
+  if (!u.modelWheels.length) return;
+  const r = CAR_TPL.wheelR;
+  u.modelWheels.forEach(w => {
+    w.a += w.sign * ds / r;
+    _ax.fromArray(w.axis);
+    _m1.makeTranslation(w.c[0], w.c[1], w.c[2]); _m2.makeRotationAxis(_ax, w.a); _m3.makeTranslation(-w.c[0], -w.c[1], -w.c[2]);
+    w.o.matrix.copy(w.base).multiply(_m1).multiply(_m2).multiply(_m3);
+    w.o.matrixWorldNeedsUpdate = true;
+  });
+}
+
+// ---------- Sonido ----------
+// Usa grabaciones de assets/sfx/*.mp3 si existen; si no, sintetiza un motor de respaldo.
+const audio = (() => {
+  let ctx = null, master = null, muted = store.get('apexgt-mute') === '1';
+  // Archivos disponibles en assets/sfx/ (se agregan aquí a medida que existan)
+  const S = {}, FILES = { mid:'engine-mid.wav' };
+  let eng = null, skid = null, hiss = null, crowd = null, wasNitro = false, lastHit = 0;
+  const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
+  function noiseBuf(){ const b = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  function loop(buf, filt, vol){
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const g = gain(0); let n = src;
+    if (filt){ const f = ctx.createBiquadFilter(); f.type = filt.type; f.frequency.value = filt.freq; f.Q.value = filt.q || 1; n.connect(f); n = f; }
+    n.connect(g); g.connect(master); src.start(); g.max = vol; return g;
+  }
+  function once(buf, vol, rate){
+    if (!ctx || !buf) return;
+    const s = ctx.createBufferSource(); s.buffer = buf; s.playbackRate.value = rate || 1;
+    const g = gain(vol); s.connect(g); g.connect(master); s.start();
+  }
+  function build(){
+    const noise = noiseBuf();
+    eng = { out:gain(0), layers:[] }; eng.out.connect(master);
+    const engBufs = ['low', 'mid', 'high'].filter(k => S[k]);
+    if (engBufs.length === 1){
+      // Un solo loop grabado: se le sube y baja el tono según las revoluciones
+      const src = ctx.createBufferSource(); src.buffer = S[engBufs[0]]; src.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 0.7;
+      const g = gain(1); src.connect(f); f.connect(g); g.connect(eng.out); src.start();
+      eng.single = { src, f };
+    } else if (engBufs.length){
+      ['low', 'mid', 'high'].forEach((k, i) => {
+        const src = ctx.createBufferSource(); src.buffer = S[k] || S.mid || S.high || S.low; src.loop = true;
+        const g = gain(0); src.connect(g); g.connect(eng.out); src.start();
+        eng.layers.push({ src, g, center:[0.15, 0.5, 0.85][i] });
+      });
+    } else {
+      const sh = ctx.createWaveShaper(), curve = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++){ const x = i / 512 - 1; curve[i] = Math.tanh(x * 3); }
+      sh.curve = curve;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 3;
+      const oscs = [['sawtooth', 0.5], ['square', 0.3], ['sawtooth', 0.22]].map(([t, v]) => { const o = ctx.createOscillator(); o.type = t; const g = gain(v); o.connect(g); g.connect(sh); o.start(); return o; });
+      sh.connect(f); f.connect(eng.out);
+      eng.synth = { oscs, f };
+    }
+    skid = S.skid ? loop(S.skid, null, 0.55) : loop(noise, { type:'bandpass', freq:2200, q:1.4 }, 0.22);
+    hiss = loop(noise, { type:'highpass', freq:3500 }, 0.12);
+    if (S.crowd) crowd = loop(S.crowd, null, 0.12);
+    S.noise = noise;
+  }
+  async function loadAll(){
+    await Promise.all(Object.entries(FILES).map(async ([k, f]) => {
+      try { const r = await fetch('assets/sfx/' + f); if (r.ok) S[k] = await ctx.decodeAudioData(await r.arrayBuffer()); } catch(e){}
+    }));
+    build();
+  }
+  return {
+    unlock(){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!ctx){
+        ctx = new AC();
+        master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85;
+        const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
+        loadAll();
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+    },
+    pause(on){ if (ctx) on ? ctx.suspend() : ctx.resume(); },
+    get muted(){ return muted; },
+    toggle(){ muted = !muted; store.set('apexgt-mute', muted ? '1' : '0'); if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05); return muted; },
+    // p: { active, rpm 0..1, load 0..1, skid 0..1, nitro bool }
+    update(p){
+      if (!ctx || !eng) return;
+      const t = ctx.currentTime, k = 0.06;
+      eng.out.gain.setTargetAtTime(p.active ? 0.3 + 0.3 * p.load : 0, t, 0.12);
+      if (eng.single){
+        eng.single.src.playbackRate.setTargetAtTime(0.55 + p.rpm * 1.1, t, k);
+        eng.single.f.frequency.setTargetAtTime(900 + p.rpm * 5000 + p.load * 3000, t, k);
+      } else if (eng.synth){
+        const base = 34 + p.rpm * 190;
+        eng.synth.oscs[0].frequency.setTargetAtTime(base, t, k);
+        eng.synth.oscs[1].frequency.setTargetAtTime(base * 0.5, t, k);
+        eng.synth.oscs[2].frequency.setTargetAtTime(base * 1.012, t, k);
+        eng.synth.f.frequency.setTargetAtTime(260 + p.rpm * 2400 + p.load * 900, t, k);
+      } else {
+        eng.layers.forEach(L => {
+          const d = Math.abs(p.rpm - L.center);
+          L.g.gain.setTargetAtTime(Math.max(0, 1 - d / 0.4), t, k);
+          L.src.playbackRate.setTargetAtTime(clamp(1 + (p.rpm - L.center) * 1.1, 0.6, 1.9), t, k);
+        });
+      }
+      skid.gain.setTargetAtTime(p.active ? p.skid * skid.max : 0, t, 0.05);
+      hiss.gain.setTargetAtTime(p.active && p.nitro ? hiss.max : 0, t, 0.08);
+      if (crowd) crowd.gain.setTargetAtTime(p.active ? crowd.max : crowd.max * 0.4, t, 0.5);
+      if (p.nitro && !wasNitro){
+        if (S.nitro) once(S.nitro, 0.7);
+        else { // silbido sintético
+          const s = ctx.createBufferSource(); s.buffer = S.noise; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 4;
+          f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(5000, t + 0.5);
+          const g = gain(0.4); g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+          s.connect(f); f.connect(g); g.connect(master); s.start(); s.stop(t + 0.8);
+        }
+      }
+      wasNitro = p.nitro;
+    },
+    hit(strength){
+      if (!ctx || !S.noise) return;
+      const t = ctx.currentTime; if (t - lastHit < 0.25 || strength < 2) return; lastHit = t;
+      const vol = clamp(strength / 25, 0.15, 1);
+      if (S.crash){ once(S.crash, vol, 0.9 + Math.random() * 0.2); return; }
+      const s = ctx.createBufferSource(); s.buffer = S.noise; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700;
+      const g = gain(vol); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      s.connect(f); f.connect(g); g.connect(master); s.start(); s.stop(t + 0.4);
+    },
+    beep(freq, dur){
+      if (!ctx) return;
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = gain(0.25);
+      o.type = 'square'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g); g.connect(master); o.start(); o.stop(t + dur + 0.05);
+    },
+  };
+})();
+// Revoluciones simuladas con 6 marchas, para que el motor suba y baje como en un auto real
+const GEARS = [0, 0.16, 0.32, 0.5, 0.68, 0.86, 1.4];
+function engineState(){
+  const c = CARS[player.type], r = clamp(Math.abs(player.v) / c.vmax, 0, 1.39);
+  let gi = 0; while (gi < GEARS.length - 2 && r >= GEARS[gi + 1]) gi++;
+  const within = (r - GEARS[gi]) / (GEARS[gi + 1] - GEARS[gi]);
+  const throttle = state === 'race' && (input.up || player.nitroOn);
+  let rpm = gi === 0 ? 0.12 + 0.58 * within : 0.42 + 0.55 * within;
+  if (Math.abs(player.v) < 1) rpm = state === 'count' && input.up ? 0.55 : 0.12;
+  const sp = Math.abs(player.v);
+  const skid = clamp(Math.abs(player.steerSm) * Math.max(0, sp - 22) / 35 + (state === 'race' && input.down && player.v > 12 ? 0.7 : 0) + (player.off && sp > 10 ? 0.25 : 0), 0, 1);
+  return { active: state !== 'menu', rpm, load: throttle ? 1 : (state === 'count' && input.up ? 0.8 : 0.15), skid, nitro: !!player.nitroOn };
 }
 
 // Etiqueta con el nombre sobre los autos de otros jugadores
@@ -697,7 +936,7 @@ function updateRemotes(dt){
     r.pos.x += (r.tx - r.pos.x) * k; r.pos.z += (r.tz - r.pos.z) * k;
     r.h += wrapA(r.th - r.h) * k;
     const m = r.mesh; m.position.copy(r.pos); m.rotation.y = r.h;
-    m.userData.wheels.forEach(w => w.rotation.x += r.v * dt / WHEEL_R);
+    rollWheels(m, r.v * dt);
     m.userData.flames.forEach(f => { f.visible = !!r.nitroOn; f.scale.z = 0.8 + Math.random() * 0.5; });
   });
 }
@@ -723,7 +962,7 @@ function collide(A, B){
   else {
     const s = Math.sign(lon) || 1; mx = fx * pz * s; mz = fz * pz * s;
     const back = s > 0 ? A : B, front = s > 0 ? B : A;
-    if (back.v > front.v){ const dv = back.v - front.v; if (movable(back)) back.v -= dv * 0.6; if (movable(front)) front.v += dv * 0.25; }
+    if (back.v > front.v){ const dv = back.v - front.v; if ((A.isPlayer || B.isPlayer) && state !== 'menu') audio.hit(dv * 3); if (movable(back)) back.v -= dv * 0.6; if (movable(front)) front.v += dv * 0.25; }
   }
   const fa = ma && mb ? 0.5 : (ma ? 1 : 0), fb = ma && mb ? 0.5 : (mb ? 1 : 0);
   move(A, -mx * fa, -mz * fa); move(B, mx * fb, mz * fb);
@@ -741,6 +980,7 @@ function trackPlayer(dt){
     const fx = Math.sin(player.h), fz = Math.cos(player.h);
     const into = (fx * n.x + fz * n.z) * sg * Math.sign(player.v);
     if (into > 0){
+      audio.hit(into * Math.abs(player.v));
       player.v *= 1 - 0.5 * into;
       const tgt = Math.cos(wrapA(TH[i] - player.h)) >= 0 ? TH[i] : TH[i] + Math.PI;
       player.h += wrapA(tgt - player.h) * 0.25;
@@ -766,7 +1006,7 @@ function placePlayer(dt){
   m.position.copy(player.pos); m.rotation.y = player.h;
   u.chassis.rotation.z = -player.steerSm * 0.06 * clamp(player.v / c.vmax, 0, 1);
   u.chassis.rotation.y = player.steerSm * 0.08 * clamp(player.v / c.vmax, 0, 1);
-  u.wheels.forEach(w => w.rotation.x += player.v * dt / WHEEL_R);
+  rollWheels(m, player.v * dt);
   u.flames.forEach(f => { f.visible = !!player.nitroOn; f.scale.z = 0.8 + Math.random() * 0.5; });
 }
 
@@ -838,11 +1078,12 @@ function update(dt){
     camera.position.set(c.x + Math.sin(attract) * 34, 11, c.z + Math.cos(attract) * 34);
     camera.lookAt(c.x, 1.5, c.z);
     camera.fov = 55; camera.updateProjectionMatrix();
+    audio.update({ active:false, rpm:0.12, load:0, skid:0, nitro:false });
   } else {
     if (state === 'count'){
       countT -= dt;
-      if (countT > 0) showCount(String(Math.ceil(countT)), false);
-      else { state = 'race'; showCount('¡YA!', true); setTimeout(() => { if (lastCount === '¡YA!') showCount('', false); }, 800); }
+      if (countT > 0){ const n = String(Math.ceil(countT)); if (n !== lastCount) audio.beep(523, 0.18); showCount(n, false); }
+      else { state = 'race'; audio.beep(1046, 0.5); showCount('¡YA!', true); setTimeout(() => { if (lastCount === '¡YA!') showCount('', false); }, 800); }
     }
     if (state === 'race' || state === 'done') raceTime += dt;
     updatePlayer(dt);
@@ -852,10 +1093,11 @@ function update(dt){
     bots.forEach(b => {
       if (movable(b)) placeBot(b);
       b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h;
-      b.mesh.userData.wheels.forEach(w => w.rotation.x += b.v * dt / WHEEL_R);
+      rollWheels(b.mesh, b.v * dt);
     });
     trackPlayer(dt);
     placePlayer(dt);
+    audio.update(engineState());
 
     camYaw += wrapA(player.h - camYaw) * (1 - Math.exp(-dt * 6));
     const cf = Math.sin(camYaw), cz = Math.cos(camYaw);
@@ -934,13 +1176,13 @@ function startSolo(){
 }
 function previewCars(){ buildCars([{ id:net.myId, name:myName(), car:selected }]); resetRace(); }
 function toMenu(){
-  hideAll(); state = 'menu'; paused = false; showCount('', false);
+  hideAll(); state = 'menu'; paused = false; audio.pause(false); showCount('', false);
   previewCars();
   $('menu').hidden = false;
 }
 function setPause(on){
   if (state === 'menu' || !$('results').hidden) return;
-  if (net.mode === 'solo') paused = on;          // en línea la carrera sigue para los demás
+  if (net.mode === 'solo'){ paused = on; audio.pause(on); }   // en línea la carrera sigue para los demás
   $('pause').hidden = !on;
   $('restartBtn').hidden = net.mode !== 'solo';
   $('pause').querySelector('.btnrow').style.gridTemplateColumns = net.mode === 'solo' ? '' : '1fr';
@@ -1205,9 +1447,26 @@ addEventListener('resize', () => {
 });
 addEventListener('beforeunload', () => { if (net.mode === 'guest' && net.host && net.host.open) try { net.host.send({ t:'bye' }); } catch(e){} });
 
+// Sonido: el navegador solo permite iniciarlo tras un toque o una tecla
+['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => audio.unlock(), { capture:true }));
+function paintSoundBtn(){ $('soundBtn').classList.toggle('off', audio.muted); $('soundBtn').setAttribute('aria-pressed', String(!audio.muted)); }
+$('soundBtn').onclick = () => { audio.toggle(); paintSoundBtn(); canvas.focus(); };
+addEventListener('keydown', e => { if (e.code === 'KeyM' && !(e.target && e.target.tagName === 'INPUT')) { audio.toggle(); paintSoundBtn(); } });
+paintSoundBtn();
+
 // ---------- Arranque ----------
 renderCarPicker();
 previewCars();
+{
+  // Mientras carga el modelo 3D, los botones de carrera esperan
+  const btns = ['startBtn', 'hostBtn', 'joinBtn'].map($), labels = btns.map(b => b.textContent);
+  btns.forEach(b => { b.disabled = true; b.textContent = 'CARGANDO…'; });
+  loadCarModel().then(tpl => {
+    CAR_TPL = tpl;
+    if (state === 'menu') previewCars();
+    btns.forEach((b, i) => { b.disabled = false; b.textContent = labels[i]; });
+  });
+}
 {
   const inv = (new URLSearchParams(location.search).get('sala') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
   if (inv){ $('code').value = inv; setStatus('Te invitaron a la sala ' + inv + '. Elige tu auto y presiona UNIRSE.', 'ok'); }
