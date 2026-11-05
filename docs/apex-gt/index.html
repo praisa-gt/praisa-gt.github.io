@@ -233,7 +233,7 @@ tr.me td:first-child{color:var(--accent)}
       </div>
       <p class="status" id="netStatus" role="status"></p>
       <p class="note">Hasta 4 pilotos por sala; los lugares libres los llenan rivales de IA.</p>
-      <p class="note credits">Modelo 3D: <a href="https://sketchfab.com/3d-models/generic-sport-car-low-poly-7ad3bfb2bd7449c19698fc7d0592a601" target="_blank" rel="noopener">Generic Sport Car Low Poly</a> por Han66st, licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Sonidos de derrape y choque: <a href="https://github.com/KenneyNL/Starter-Kit-Racing" target="_blank" rel="noopener">Kenney</a> (CC0).</p>
+      <p class="note credits">Modelo 3D: <a href="https://sketchfab.com/3d-models/generic-sport-car-low-poly-7ad3bfb2bd7449c19698fc7d0592a601" target="_blank" rel="noopener">Generic Sport Car Low Poly</a> por Han66st, licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Sonidos de motor, derrape y choque: <a href="https://github.com/KenneyNL/Starter-Kit-Racing" target="_blank" rel="noopener">Kenney</a> (CC0) y domasx2 (CC0).</p>
     </div>
   </div>
 </div>
@@ -661,7 +661,7 @@ function rollWheels(mesh, ds){
 const audio = (() => {
   let ctx = null, master = null, muted = store.get('apexgt-mute') === '1';
   // Archivos disponibles en assets/sfx/ (se agregan aquí a medida que existan)
-  const S = {}, FILES = { mid:'engine-mid.wav', skid:'skid.wav', crash:'impact.wav' };
+  const S = {}, FILES = { low:'engine-low.wav', mid:'engine-mid.wav', skid:'skid.wav', crash:'impact.wav' };
   let eng = null, skid = null, hiss = null, crowd = null, wasNitro = false, lastHit = 0;
   const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
   function noiseBuf(){ const b = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
@@ -690,7 +690,8 @@ const audio = (() => {
       ['low', 'mid', 'high'].forEach((k, i) => {
         const src = ctx.createBufferSource(); src.buffer = S[k] || S.mid || S.high || S.low; src.loop = true;
         const g = gain(0); src.connect(g); g.connect(eng.out); src.start();
-        eng.layers.push({ src, g, center:[0.15, 0.5, 0.85][i] });
+        // Si falta la grabación alta, se reutiliza la media con el tono subido
+        eng.layers.push({ src, g, center:[0.12, 0.5, 0.85][i], base: k === 'high' && !S.high ? 1.45 : 1 });
       });
     } else {
       const sh = ctx.createWaveShaper(), curve = new Float32Array(1024);
@@ -745,7 +746,7 @@ const audio = (() => {
         eng.layers.forEach(L => {
           const d = Math.abs(p.rpm - L.center);
           L.g.gain.setTargetAtTime(Math.max(0, 1 - d / 0.4), t, k);
-          L.src.playbackRate.setTargetAtTime(clamp(1 + (p.rpm - L.center) * 1.1, 0.6, 1.9), t, k);
+          L.src.playbackRate.setTargetAtTime(L.base * clamp(1 + (p.rpm - L.center) * 1.1, 0.6, 1.9), t, k);
         });
       }
       skid.gain.setTargetAtTime(p.active ? p.skid * skid.max : 0, t, 0.05);
