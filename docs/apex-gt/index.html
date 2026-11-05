@@ -235,7 +235,7 @@ tr.me td:first-child{color:var(--accent)}
       </div>
       <p class="status" id="netStatus" role="status"></p>
       <p class="note">Hasta 4 pilotos por sala; los lugares libres los llenan rivales de IA.</p>
-      <p class="note credits">Modelo 3D: <a href="https://sketchfab.com/3d-models/generic-sport-car-low-poly-7ad3bfb2bd7449c19698fc7d0592a601" target="_blank" rel="noopener">Generic Sport Car Low Poly</a> por Han66st, licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Sonidos de derrape y choque: <a href="https://github.com/KenneyNL/Starter-Kit-Racing" target="_blank" rel="noopener">Kenney</a> (CC0); motor: domasx2 (CC0).</p>
+      <p class="note credits">Modelo 3D: <a href="https://sketchfab.com/3d-models/generic-sport-car-low-poly-7ad3bfb2bd7449c19698fc7d0592a601" target="_blank" rel="noopener">Generic Sport Car Low Poly</a> por Han66st, licencia <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Sonidos de derrape y choque: <a href="https://github.com/KenneyNL/Starter-Kit-Racing" target="_blank" rel="noopener">Kenney</a> (CC0); motor: domasx2 (CC0). Música original del juego.</p>
     </div>
   </div>
 </div>
@@ -733,6 +733,7 @@ const audio = (() => {
     hiss = loop(noise, { type:'highpass', freq:3500 }, 0.16);
     if (S.crowd) crowd = loop(S.crowd, null, 0.12);
     S.noise = noise;
+    if (musWant) setMusic(true);
   }
   async function loadAll(){
     await Promise.all(Object.entries(FILES).map(async ([k, f]) => {
@@ -740,7 +741,85 @@ const audio = (() => {
     }));
     build();
   }
+  // ---------- Música original (sintetizada en el navegador, sin derechos de autor) ----------
+  // Synthwave a 124 BPM en La menor: Am - F - C - G. 8 compases: 4 de base y 4 con melodía.
+  const BPM = 124, STEP = 60 / BPM / 4;
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  const PROG = [
+    { bass:45, tones:[57, 60, 64] },   // Am
+    { bass:41, tones:[53, 57, 60] },   // F
+    { bass:48, tones:[60, 64, 67] },   // C
+    { bass:43, tones:[55, 59, 62] },   // G
+  ];
+  const LEAD = [   // [paso, nota, duración en pasos]
+    [[0, 76, 4], [4, 74, 2], [6, 72, 2], [8, 69, 6], [14, 72, 2]],
+    [[0, 72, 4], [4, 74, 2], [6, 76, 2], [8, 77, 4], [12, 76, 4]],
+    [[0, 79, 4], [4, 76, 2], [6, 74, 2], [8, 72, 6], [14, 74, 2]],
+    [[0, 74, 6], [6, 71, 2], [8, 74, 4], [12, 79, 4]],
+  ];
+  let mus = null, musWant = false, musOn = false, musTimer = null, musStep = 0, musNext = 0, musStopT = null;
+  function musBus(){
+    if (mus) return mus;
+    const out = gain(0); out.connect(master);
+    const fx = ctx.createDelay(1); fx.delayTime.value = STEP * 3;
+    const fb = gain(0.32), wet = gain(0.28);
+    fx.connect(fb); fb.connect(fx); fx.connect(wet); wet.connect(out);
+    return (mus = { out, fx });
+  }
+  function env(g, t, a, peak, dec){ g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
+  function tone(type, f, t, dur, peak, cutoff, echo, attack){
+    const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t);
+    const g = gain(0); let n = o;
+    if (cutoff){ const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = cutoff; o.connect(fl); n = fl; }
+    n.connect(g); g.connect(mus.out); if (echo) g.connect(mus.fx);
+    env(g, t, attack || 0.005, peak, dur); o.start(t); o.stop(t + (attack || 0.005) + dur + 0.05);
+    return o;
+  }
+  function kick(t){
+    const o = ctx.createOscillator(); o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+    const g = gain(0); o.connect(g); g.connect(mus.out); env(g, t, 0.003, 0.9, 0.32); o.start(t); o.stop(t + 0.4);
+  }
+  function noiseHit(t, type, freq, peak, dur){
+    const s = ctx.createBufferSource(); s.buffer = S.noise;
+    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+    const g = gain(0); s.connect(f); f.connect(g); g.connect(mus.out);
+    env(g, t, 0.002, peak, dur); s.start(t, Math.random()); s.stop(t + dur + 0.05);
+  }
+  function musicStep(i, t){
+    const bar = Math.floor(i / 16) % 8, st = i % 16, ch = PROG[bar % 4];
+    if (st % 4 === 0) kick(t);                                                     // bombo en cada tiempo
+    if (st === 4 || st === 12){ noiseHit(t, 'bandpass', 1900, 0.45, 0.16); tone('triangle', 185, t, 0.08, 0.25); } // caja
+    if (st % 2 === 1) noiseHit(t, 'highpass', 7500, st % 4 === 3 ? 0.14 : 0.08, 0.035);                          // hi-hat
+    if (st % 2 === 0) tone('sawtooth', mtof(ch.bass + (st % 4 === 2 ? 12 : 0)), t, STEP * 1.6, 0.28, 420);       // bajo en octavas
+    const arp = [ch.tones[0], ch.tones[1], ch.tones[2], ch.tones[0] + 12];
+    tone('square', mtof(arp[st % 4] + 12), t, STEP * 0.8, 0.045, 2600, true);                                    // arpegio con eco
+    if (st === 0) ch.tones.forEach(m => [-7, 7].forEach(c => { tone('sawtooth', mtof(m), t, STEP * 14, 0.028, 1100, false, 0.25).detune.value = c; })); // colchón
+    if (bar >= 4) LEAD[bar % 4].forEach(([s0, m, len]) => {                                                      // melodía
+      if (s0 !== st) return;
+      tone('sawtooth', mtof(m), t, STEP * len * 0.9, 0.09, 3200, true);
+      tone('square', mtof(m) * 1.003, t, STEP * len * 0.9, 0.05, 2400);
+    });
+  }
+  function musicTick(){
+    // Se prepara 1 s por delante para que no se pierdan notas si el 3D tarda en dibujarse;
+    // si la pestaña estuvo mucho tiempo en segundo plano, se retoma sin amontonar notas viejas
+    if (musNext < ctx.currentTime - 1) musNext = ctx.currentTime + 0.05;
+    while (musNext < ctx.currentTime + 1){ musicStep(musStep++, Math.max(musNext, ctx.currentTime)); musNext += STEP; }
+  }
+  function setMusic(on){
+    musWant = on;
+    if (!ctx || !eng || on === musOn) return;
+    musOn = on; musBus();
+    const t = ctx.currentTime;
+    mus.out.gain.cancelScheduledValues(t); mus.out.gain.setValueAtTime(mus.out.gain.value, t);
+    mus.out.gain.linearRampToValueAtTime(on ? 1.3 : 0, t + (on ? 1.2 : 0.8));
+    clearTimeout(musStopT);
+    if (on){ if (!musTimer){ musStep = 0; musNext = t + 0.1; musTimer = setInterval(musicTick, 100); } }
+    else musStopT = setTimeout(() => { if (!musOn){ clearInterval(musTimer); musTimer = null; } }, 1000);
+  }
+
   return {
+    music: setMusic,
     unlock(){
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
@@ -774,7 +853,7 @@ const audio = (() => {
       if (p.menu){ // menú: ralentí de fondo y acelerón al elegir auto
         const e = revT ? revEnv(t - revT) : 0;
         p = Object.assign({}, p, { rpm:0.12 + 0.7 * e, load:e });
-        vol = 0.22 + 0.3 * e;
+        vol = 0.1 + 0.3 * e;
       }
       eng.out.gain.setTargetAtTime(vol, t, 0.12);
       if (eng.single){
@@ -1145,6 +1224,7 @@ function update(dt){
     camera.lookAt(c.x, 1.5, c.z);
     camera.fov = 55; camera.updateProjectionMatrix();
     audio.update({ active:false, menu:true, rpm:0.12, load:0, skid:0, nitro:false });
+    audio.music(true);
   } else {
     if (state === 'count'){
       countT -= dt;
@@ -1164,6 +1244,7 @@ function update(dt){
     trackPlayer(dt);
     placePlayer(dt);
     audio.update(engineState());
+    audio.music(!$('results').hidden);
 
     camYaw += wrapA(player.h - camYaw) * (1 - Math.exp(-dt * 7));
     const cf = Math.sin(camYaw), cz = Math.cos(camYaw);
