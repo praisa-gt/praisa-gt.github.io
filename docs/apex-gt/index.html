@@ -687,7 +687,9 @@ const audio = (() => {
   let ctx = null, master = null, muted = store.get('apexgt-mute') === '1';
   // Archivos disponibles en assets/sfx/ (se agregan aquí a medida que existan)
   const S = {}, FILES = { mid:'engine-mid.wav', skid:'skid.wav', crash:'impact.wav' };
-  let eng = null, skid = null, hiss = null, crowd = null, wasNitro = false, lastHit = 0;
+  let eng = null, skid = null, hiss = null, crowd = null, wasNitro = false, lastHit = 0, revT = 0;
+  // Acelerón corto (al elegir auto en el menú): sube rápido y cae poco a poco
+  const revEnv = d => d < 0 ? 0 : d < 0.12 ? d / 0.12 : Math.exp(-(d - 0.12) * 3.2);
   const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
   function noiseBuf(){ const b = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
   function loop(buf, filt, vol){
@@ -727,8 +729,8 @@ const audio = (() => {
       sh.connect(f); f.connect(eng.out);
       eng.synth = { oscs, f };
     }
-    skid = S.skid ? loop(S.skid, null, 0.55) : loop(noise, { type:'bandpass', freq:2200, q:1.4 }, 0.22);
-    hiss = loop(noise, { type:'highpass', freq:3500 }, 0.12);
+    skid = S.skid ? loop(S.skid, null, 0.8) : loop(noise, { type:'bandpass', freq:2200, q:1.4 }, 0.3);
+    hiss = loop(noise, { type:'highpass', freq:3500 }, 0.16);
     if (S.crowd) crowd = loop(S.crowd, null, 0.12);
     S.noise = noise;
   }
@@ -744,20 +746,37 @@ const audio = (() => {
       if (!AC) return;
       if (!ctx){
         ctx = new AC();
-        master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85;
-        const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
+        master = ctx.createGain(); master.gain.value = muted ? 0 : 1;
+        // Refuerzo de volumen y limitador al final, para que suene fuerte sin saturar
+        const boost = gain(1.9), lim = ctx.createDynamicsCompressor();
+        lim.threshold.value = -4; lim.knee.value = 2; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.2;
+        master.connect(boost); boost.connect(lim); lim.connect(ctx.destination);
         loadAll();
       }
       if (ctx.state === 'suspended') ctx.resume();
     },
     pause(on){ if (ctx) on ? ctx.suspend() : ctx.resume(); },
+    rev(){ if (ctx) revT = ctx.currentTime; },
+    click(){
+      if (!ctx) return;
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = gain(0.2);
+      o.type = 'triangle'; o.frequency.setValueAtTime(1300, t); o.frequency.exponentialRampToValueAtTime(700, t + 0.05);
+      g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.08);
+    },
     get muted(){ return muted; },
-    toggle(){ muted = !muted; store.set('apexgt-mute', muted ? '1' : '0'); if (master) master.gain.setTargetAtTime(muted ? 0 : 0.85, ctx.currentTime, 0.05); return muted; },
+    toggle(){ muted = !muted; store.set('apexgt-mute', muted ? '1' : '0'); if (master) master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.05); return muted; },
     // p: { active, rpm 0..1, load 0..1, skid 0..1, nitro bool }
     update(p){
       if (!ctx || !eng) return;
       const t = ctx.currentTime, k = 0.06;
-      eng.out.gain.setTargetAtTime(p.active ? 0.3 + 0.3 * p.load : 0, t, 0.12);
+      let vol = p.active ? 0.45 + 0.35 * p.load : 0;
+      if (p.menu){ // menú: ralentí de fondo y acelerón al elegir auto
+        const e = revT ? revEnv(t - revT) : 0;
+        p = Object.assign({}, p, { rpm:0.12 + 0.7 * e, load:e });
+        vol = 0.22 + 0.3 * e;
+      }
+      eng.out.gain.setTargetAtTime(vol, t, 0.12);
       if (eng.single){
         // Rango alto, de motor de carreras: de ~60 Hz en ralentí a ~230 Hz al límite
         eng.single.src.playbackRate.setTargetAtTime(0.8 + p.rpm * 2.4, t, k);
@@ -800,9 +819,9 @@ const audio = (() => {
     },
     beep(freq, dur){
       if (!ctx) return;
-      const t = ctx.currentTime, o = ctx.createOscillator(), g = gain(0.25);
+      const t = ctx.currentTime, o = ctx.createOscillator(), g = gain(0.35);
       o.type = 'square'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
       o.connect(g); g.connect(master); o.start(); o.stop(t + dur + 0.05);
     },
   };
@@ -1125,7 +1144,7 @@ function update(dt){
     camera.position.set(c.x + Math.sin(attract) * 34, 11, c.z + Math.cos(attract) * 34);
     camera.lookAt(c.x, 1.5, c.z);
     camera.fov = 55; camera.updateProjectionMatrix();
-    audio.update({ active:false, rpm:0.12, load:0, skid:0, nitro:false });
+    audio.update({ active:false, menu:true, rpm:0.12, load:0, skid:0, nitro:false });
   } else {
     if (state === 'count'){
       countT -= dt;
@@ -1441,7 +1460,7 @@ function renderCarPicker(){
     const b = document.createElement('button');
     b.className = 'carbtn'; b.setAttribute('aria-pressed', id === selected);
     b.innerHTML = '<i style="background:' + hex(c.color) + '"></i>' + c.name;
-    b.onclick = () => { selected = id; store.set('apexgt-car', id); renderCarPicker(); if (net.mode === 'solo') previewCars(); };
+    b.onclick = () => { selected = id; store.set('apexgt-car', id); audio.rev(); renderCarPicker(); if (net.mode === 'solo') previewCars(); };
     box.appendChild(b);
   });
   const c = CARS[selected], z = 27.8 / (c.accel * 0.78);
@@ -1499,6 +1518,11 @@ addEventListener('beforeunload', () => { if (net.mode === 'guest' && net.host &&
 
 // Sonido: el navegador solo permite iniciarlo tras un toque o una tecla
 ['pointerdown', 'keydown'].forEach(ev => addEventListener(ev, () => audio.unlock(), { capture:true }));
+// Clic en los botones de las pantallas (no en los controles de manejo)
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button');
+  if (b && !b.disabled && !b.classList.contains('tb') && !b.classList.contains('carbtn')) audio.click();
+});
 function paintSoundBtn(){ $('soundBtn').classList.toggle('off', audio.muted); $('soundBtn').setAttribute('aria-pressed', String(!audio.muted)); }
 $('soundBtn').onclick = () => { audio.toggle(); paintSoundBtn(); canvas.focus(); };
 addEventListener('keydown', e => { if (e.code === 'KeyM' && !(e.target && e.target.tagName === 'INPUT')) { audio.toggle(); paintSoundBtn(); } });
