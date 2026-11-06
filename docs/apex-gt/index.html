@@ -745,7 +745,212 @@ function buildTrack(id){
       m.position.set(cx + Math.cos(a) * R, H / 2, cz + Math.sin(a) * R); m.rotation.y = Math.random() * 3;
     }
   }
+  buildObstacles(add);
 }
+// ---------- Obstáculos ----------
+// Turbos, manchas de aceite, rampas, conos y barriles. Se ubican con una semilla fija por pista,
+// así todos los jugadores en línea los ven en el mismo lugar.
+let OB = { pads:[], oils:[], ramps:[], props:[], padTex:null };
+function seeded(str){
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; }
+  let a = h >>> 0;
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const modL = s => ((s % L) + L) % L;
+const along = d => { d = modL(d); return d > L / 2 ? d - L : d; };   // distancia con signo a lo largo de la pista
+function maxCurv(s0, len){ let m = 0; for (let s = s0; s <= s0 + len; s += ds) m = Math.max(m, CURV[Math.floor(modL(s) / ds) % N]); return m; }
+// Pone un objeto sobre la pista: s a lo largo, lat hacia el costado; su +Z mira hacia adelante
+function onTrack(obj, s, lat, y){ const p = sampleAt(s); obj.position.copy(p.P).addScaledVector(p.Nn, lat); obj.position.y = y; obj.rotation.y = Math.atan2(p.T.x, p.T.z); return obj; }
+const inRect = (o, s, lat) => { const u = along(s - o.s); return u >= 0 && u <= o.len && Math.abs(lat - o.lat) <= o.w / 2; };
+
+function buildObstacles(add){
+  OB = { pads:[], oils:[], ramps:[], props:[], padTex:null };
+  const rnd = seeded('apexgt-' + trackId);
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+
+  // Texturas y materiales compartidos
+  const padTex = canvasTex(64, 128, (x, w, h) => {
+    x.fillStyle = 'rgba(8,40,60,0.85)'; x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#5ef0ff'; x.lineWidth = 9; x.lineCap = 'round'; x.lineJoin = 'round';
+    for (let k = 0; k < 3; k++){ const y = 18 + k * 40; x.beginPath(); x.moveTo(12, y); x.lineTo(32, y + 22); x.lineTo(52, y); x.stroke(); }
+  });
+  padTex.wrapT = THREE.RepeatWrapping; OB.padTex = padTex;
+  const padMat = new THREE.MeshBasicMaterial({ map:padTex, transparent:true, opacity:0.95, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2 });
+  const oilTex = canvasTex(128, 128, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    for (let k = 0; k < 7; k++){
+      const cx = 64 + (Math.random() - 0.5) * 50, cy = 64 + (Math.random() - 0.5) * 50, r = 22 + Math.random() * 24;
+      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.75, 'rgba(0,0,0,0.9)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, Math.PI * 2); x.fill();
+    }
+  });
+  const oilMat = new THREE.MeshStandardMaterial({ color:0x0b0b10, alphaMap:oilTex, transparent:true, roughness:0.05, metalness:0.7, envMapIntensity:2, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2 });
+  // Rampa: flechas amarillas que suben, sobre fondo oscuro
+  const rampTex = canvasTex(64, 64, (x, w, h) => {
+    x.fillStyle = '#1f2430'; x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#facc15'; x.lineWidth = 8; x.lineJoin = 'miter';
+    x.beginPath(); x.moveTo(6, 18); x.lineTo(32, 44); x.lineTo(58, 18); x.stroke();   // punta abajo = hacia adelante en la pista
+  });
+  rampTex.wrapT = THREE.RepeatWrapping; rampTex.repeat.set(1, 3);
+  const railTex = canvasTex(64, 8, (x, w, h) => { for (let k = 0; k < 8; k++){ x.fillStyle = k % 2 ? '#f8fafc' : '#dc2626'; x.fillRect(k * 8, 0, 8, h); } });
+  railTex.wrapS = THREE.RepeatWrapping; railTex.repeat.set(3, 1);
+  const railMat = new THREE.MeshStandardMaterial({ map:railTex, roughness:0.5 });
+  const rampTop = new THREE.MeshStandardMaterial({ map:rampTex, roughness:0.6 });
+  const rampBody = new THREE.MeshStandardMaterial({ color:0x9ca3af, roughness:0.7, metalness:0.3 });
+  const coneMat = new THREE.MeshStandardMaterial({ color:0xff6a00, roughness:0.5 });
+  const white = new THREE.MeshStandardMaterial({ color:0xf8fafc, roughness:0.4 });
+  const black = new THREE.MeshStandardMaterial({ color:0x111111, roughness:0.8 });
+  const barrelTex = canvasTex(64, 64, (x, w, h) => { x.fillStyle = '#c81e1e'; x.fillRect(0, 0, w, h); x.fillStyle = '#f8fafc'; x.fillRect(0, 18, w, 8); x.fillRect(0, 40, w, 8); });
+  const barrelMat = new THREE.MeshStandardMaterial({ map:barrelTex, roughness:0.45, metalness:0.3 });
+  const coneG = new THREE.ConeGeometry(0.33, 0.85, 12); coneG.translate(0, 0.45, 0);
+  const bandG = new THREE.CylinderGeometry(0.19, 0.23, 0.13, 12); bandG.translate(0, 0.42, 0);
+  const baseG = new THREE.BoxGeometry(0.62, 0.05, 0.62); baseG.translate(0, 0.025, 0);
+  const barrelG = new THREE.CylinderGeometry(0.45, 0.45, 1.1, 16); barrelG.translate(0, 0.55, 0);
+
+  const addProp = (kind, s, lat) => {
+    const g = new THREE.Group();
+    if (kind === 'cone'){ g.add(new THREE.Mesh(coneG, coneMat), new THREE.Mesh(bandG, white), new THREE.Mesh(baseG, black)); }
+    else g.add(new THREE.Mesh(barrelG, barrelMat));
+    g.children.forEach(m => m.castShadow = true);
+    onTrack(g, s, lat, 0.08); add(g);
+    OB.props.push({ kind, obj:g, home:{ x:g.position.x, z:g.position.z, ry:g.rotation.y }, r: kind === 'cone' ? 0.35 : 0.5,
+      hit:false, t:0, vel:new THREE.Vector3(), spin:new THREE.Vector3() });
+  };
+  const addPad = (s, lat) => {
+    const o = { s, lat, w:5, len:9 };
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(o.w, o.len), padMat); m.geometry.rotateX(-Math.PI / 2); m.geometry.translate(0, 0, o.len / 2);
+    onTrack(m, s, lat, 0.1); add(m); OB.pads.push(o);
+  };
+  const addOil = (s, lat) => {
+    const o = { s:s - 3.5, lat, w:6.5, len:7 };
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 7.5), oilMat); m.geometry.rotateX(-Math.PI / 2);
+    onTrack(m, s, lat, 0.1); m.rotation.y += rnd() * 6; add(m); OB.oils.push(o);
+  };
+  const addRamp = (s, lat) => {
+    const o = { s, lat, w:7, len:9, H:1.8 };
+    const g = new THREE.Group();
+    const shape = new THREE.Shape(); shape.moveTo(0, 0); shape.lineTo(o.len, 0); shape.lineTo(o.len, o.H); shape.closePath();
+    const body = new THREE.ExtrudeGeometry(shape, { depth:o.w, bevelEnabled:false });
+    body.rotateY(-Math.PI / 2); body.translate(o.w / 2, 0, 0);
+    const bm = new THREE.Mesh(body, rampBody); bm.castShadow = bm.receiveShadow = true; g.add(bm);
+    const slopeLen = Math.hypot(o.len, o.H), top = new THREE.Mesh(new THREE.PlaneGeometry(o.w - 0.1, slopeLen), rampTop);
+    top.rotation.x = -Math.PI / 2 - Math.atan2(o.H, o.len); top.position.set(0, o.H / 2 + 0.03, o.len / 2); top.receiveShadow = true;
+    g.add(top);
+    // Barandas rojas y blancas a los costados: dejan ver la altura desde atrás
+    const a = Math.atan2(o.H, o.len);
+    [-1, 1].forEach(sd => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.4, slopeLen), railMat);
+      rail.rotation.x = -a; rail.position.set(sd * (o.w / 2 - 0.12), o.H / 2 + 0.2, o.len / 2); rail.castShadow = true; g.add(rail);
+    });
+    onTrack(g, s, lat, 0.08); add(g); OB.ramps.push(o);
+  };
+
+  // Puntos candidatos a lo largo de la pista, dejando libre la largada y la llegada
+  const cands = [];
+  for (let s = 170; s < L - 130; s += 115 + rnd() * 60) cands.push({ s, straight:maxCurv(s, 100) });
+  const kinds = new Array(cands.length).fill(null);
+  const order = cands.map((c, i) => i).sort((a, b) => cands[a].straight - cands[b].straight);
+  // Rampas en las 2 zonas más rectas (necesitan espacio para aterrizar), turbos en las siguientes
+  let ramps = 0, pads = 0;
+  for (const i of order){
+    if (ramps >= 2 || cands[i].straight > 0.009) break;
+    if (kinds[i - 1] === 'ramp' || kinds[i + 1] === 'ramp') continue;
+    kinds[i] = 'ramp'; ramps++;
+  }
+  for (const i of order){ if (pads >= 3 || cands[i].straight > 0.014) break; if (!kinds[i]){ kinds[i] = 'pad'; pads++; } }
+  // El resto, repartido entre aceite, conos y barriles
+  const rest = ['oil', 'cones', 'barrels']; let r = Math.floor(rnd() * 3);
+  kinds.forEach((k, i) => { if (!k) kinds[i] = rest[r++ % 3]; });
+
+  cands.forEach(({ s }, i) => {
+    const kind = kinds[i], side = rnd() < 0.5 ? -1 : 1;
+    if (kind === 'pad') addPad(s, (rnd() - 0.5) * 12);
+    else if (kind === 'ramp') addRamp(s, (rnd() - 0.5) * 6);
+    else if (kind === 'oil') addOil(s, (rnd() - 0.5) * 12);
+    else if (kind === 'cones'){
+      // Línea diagonal que cubre medio carril: se puede esquivar por el otro lado
+      const a = side * 9.5, b = side * 1;
+      for (let k = 0; k < 6; k++) addProp('cone', s + k * 3, a + (b - a) * k / 5);
+    } else {
+      const base = side * (7 + rnd() * 2);
+      [[0, 0], [1.3, 0.4], [0.6, -1.1]].forEach(([u, l]) => addProp('barrel', s + u, base - side * l));
+    }
+  });
+}
+
+function resetProps(){
+  OB.props.forEach(p => {
+    p.hit = false; p.t = 0; p.vel.set(0, 0, 0); p.spin.set(0, 0, 0);
+    p.obj.position.set(p.home.x, 0.08, p.home.z); p.obj.rotation.set(0, p.home.ry, 0); p.obj.scale.setScalar(1);
+  });
+}
+// Un auto choca un cono o barril: sale volando en la dirección del auto
+function knockProps(c){
+  if ((c.y || 0) > 1) return;
+  const fx = Math.sin(c.h), fz = Math.cos(c.h), sp = Math.abs(c.v);
+  for (const p of OB.props){
+    if (p.hit) continue;
+    const dx = p.obj.position.x - c.pos.x, dz = p.obj.position.z - c.pos.z, R = p.r + 1.15;
+    if (dx * dx + dz * dz > R * R) continue;
+    const d = Math.hypot(dx, dz) || 1, cone = p.kind === 'cone';
+    p.hit = true; p.t = 0;
+    p.vel.set(fx * sp * (cone ? 0.85 : 0.55) + dx / d * 3, (cone ? 5 : 3) + Math.random() * (cone ? 3 : 1.5), fz * sp * (cone ? 0.85 : 0.55) + dz / d * 3);
+    p.spin.set((Math.random() - 0.5) * 14, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 14);
+    if (movable(c)) c.v *= cone ? 0.97 : 0.84;
+    if (c.isPlayer) audio.hit(cone ? 7 : 16);
+  }
+}
+function updateProps(dt){
+  for (const p of OB.props){
+    if (!p.hit) continue;
+    p.t += dt;
+    const o = p.obj;
+    if (p.t > 7.5){   // vuelve a su lugar para la siguiente vuelta
+      const k = Math.min(1, (p.t - 7.5) / 0.4);
+      if (p.t < 7.5 + dt * 1.5){ o.position.set(p.home.x, 0.08, p.home.z); o.rotation.set(0, p.home.ry, 0); }
+      o.scale.setScalar(k);
+      if (k >= 1){ p.hit = false; p.t = 0; }
+      continue;
+    }
+    p.vel.y -= 20 * dt;
+    o.position.addScaledVector(p.vel, dt);
+    o.rotation.x += p.spin.x * dt; o.rotation.y += p.spin.y * dt; o.rotation.z += p.spin.z * dt;
+    if (o.position.y < 0.08){
+      o.position.y = 0.08;
+      p.vel.y = p.vel.y < -2 ? -p.vel.y * 0.35 : 0;
+      p.vel.x *= 0.75; p.vel.z *= 0.75; p.spin.multiplyScalar(0.7);
+    }
+  }
+}
+
+// Altura sobre una rampa (o null si no está sobre ninguna)
+function rampAt(s, lat){
+  for (const r of OB.ramps){ const u = along(s - r.s); if (u >= 0 && u <= r.len && Math.abs(lat - r.lat) <= r.w / 2) return { r, u }; }
+  return null;
+}
+// Física vertical de cualquier auto: subir la rampa, volar y aterrizar
+function vertical(c, s, lat, dt){
+  c.y = c.y || 0; c.vy = c.vy || 0;
+  const hit = rampAt(s, lat);
+  if (hit && !c.air && c.y <= hit.u / hit.r.len * hit.r.H + 0.4){
+    c.y = hit.u / hit.r.len * hit.r.H; c.vy = 0; c.ramp = hit.r; c.pitch = -Math.atan2(hit.r.H, hit.r.len);
+    return;
+  }
+  if (c.ramp && !c.air){
+    const r = c.ramp; c.ramp = null;
+    if (c.y > 0.2){ c.air = true; c.vy = Math.min(10, Math.max(0, c.v) * r.H / r.len + 1.2); }
+  }
+  if (c.air || c.y > 0){
+    c.vy -= 24 * dt; c.y += c.vy * dt; c.air = true;
+    if (c.y <= 0){
+      const impact = -c.vy; c.y = 0; c.vy = 0; c.air = false;
+      if (c.isPlayer && impact > 5){ audio.hit(impact * 1.3); c.land = 0.25; }
+    }
+  }
+  c.pitch = c.air ? clamp(-Math.atan2(c.vy, Math.max(8, Math.abs(c.v))) * 0.8, -0.35, 0.35) : 0;
+}
+
 buildTrack(trackId);
 
 // ---------- Autos ----------
@@ -853,6 +1058,7 @@ function makeCar(color){
   const fg = new THREE.ConeGeometry(0.2, 1.6, 10); fg.rotateX(-Math.PI / 2);
   const flames = [-0.45, 0.45].map(x => add(fg, flameMat, x, 0.45, rearZ - 0.7, false));
   flames.forEach(f => f.visible = false);
+  g.rotation.order = 'YXZ';   // para inclinar la trompa en los saltos
   g.userData = { chassis, wheels, modelWheels, flames };
   return g;
 }
@@ -1106,8 +1312,8 @@ function engineState(){
   let rpm = gi === 0 ? 0.12 + 0.58 * within : 0.42 + 0.55 * within;
   if (Math.abs(player.v) < 1) rpm = state === 'count' && input.up ? 0.55 : 0.12;
   const sp = Math.abs(player.v);
-  const skid = clamp(Math.abs(player.steerSm) * Math.max(0, sp - 22) / 35 + (state === 'race' && input.down && player.v > 12 ? 0.7 : 0) + (player.off && sp > 10 ? 0.25 : 0), 0, 1);
-  return { active: state !== 'menu', rpm, load: throttle ? 1 : (state === 'count' && input.up ? 0.8 : 0.15), skid, nitro: !!player.nitroOn };
+  const skid = clamp(Math.abs(player.steerSm) * Math.max(0, sp - 22) / 35 + (state === 'race' && input.down && player.v > 12 ? 0.7 : 0) + (player.off && sp > 10 ? 0.25 : 0) + (player.slipT > 0 ? 0.9 : 0), 0, 1);
+  return { active: state !== 'menu', rpm, load: throttle ? 1 : (state === 'count' && input.up ? 0.8 : 0.15), skid, nitro: !!(player.nitroOn || player.boosting) };
 }
 
 // Etiqueta con el nombre sobre los autos de otros jugadores
@@ -1158,7 +1364,8 @@ function buildCars(list){
 function gridHuman(c, slot){
   const s = slotInfo(slot), smp = sampleAt(L - s.back);
   c.pos.copy(smp.P).addScaledVector(smp.Nn, s.lane);
-  Object.assign(c, { h:Math.atan2(smp.T.x, smp.T.z), v:0, steerSm:0, nitro:100, finished:false, time:0, laps:0, lapStart:0, best:Infinity, off:false, nitroOn:false });
+  Object.assign(c, { h:Math.atan2(smp.T.x, smp.T.z), v:0, steerSm:0, nitro:100, finished:false, time:0, laps:0, lapStart:0, best:Infinity, off:false, nitroOn:false,
+    y:0, vy:0, air:false, ramp:null, pitch:0, boostT:0, slipT:0, padCool:0, oilCool:0, boosting:false, land:0, lat:0 });
   c.tx = c.pos.x; c.tz = c.pos.z; c.th = c.h;
   c.idx = nearest(c.pos, 0, N / 2);
   c.lastS = c.idx * ds;
@@ -1174,9 +1381,10 @@ function resetRace(){
   const free = [0, 1, 2, 3, 4, 5].filter(s => !used.has(s));
   bots.forEach((b, k) => {
     const s = slotInfo(free[k]);
-    Object.assign(b, { dist:-s.back, tDist:-s.back, lane:s.lane, tLane:s.lane, v:0, finished:false, time:0 });
+    Object.assign(b, { dist:-s.back, tDist:-s.back, lane:s.lane, tLane:s.lane, v:0, finished:false, time:0, y:0, vy:0, air:false, ramp:null, pitch:0, padCool:0 });
     placeBot(b);
   });
+  resetProps();
   camYaw = player.h; raceTime = 0; doneT = 0; lastCount = '';
   all.forEach(c => { c.mesh.position.copy(c.pos); c.mesh.rotation.y = c.h; });
 }
@@ -1190,6 +1398,16 @@ function placeBot(b){
 // ---------- Física ----------
 function updatePlayer(dt){
   const c = CARS[player.type], ctl = state === 'race';
+  player.padCool -= dt; player.oilCool -= dt;
+  if (player.boostT > 0) player.boostT -= dt;
+  player.boosting = player.boostT > 0;
+  if (player.air){   // en el aire: sin dirección ni frenos, solo inercia
+    player.nitroOn = false; player.steerSm *= 1 - Math.min(1, dt * 3);
+    player.v -= player.v * 0.04 * dt;
+    player.pos.x += Math.sin(player.h) * player.v * dt;
+    player.pos.z += Math.cos(player.h) * player.v * dt;
+    return;
+  }
   let st = ctl ? (input.left || input.right ? input.left - input.right : (tiltOn() ? tilt.steer : 0)) : 0;
   if (state === 'done'){
     const i = player.idx, lat = (player.pos.x - SP[i].x) * NR[i].x + (player.pos.z - SP[i].z) * NR[i].z;
@@ -1198,15 +1416,21 @@ function updatePlayer(dt){
   const up = ctl && input.up, dn = ctl && input.down;
   const nitroOn = ctl && input.nitro && player.nitro > 0.5 && player.v > 4;
   player.nitroOn = nitroOn;
-  const vmax = c.vmax * (nitroOn ? 1.3 : 1) * (player.off ? 0.5 : 1);
+  const boost = player.boosting;
+  const vmax = c.vmax * (1 + (nitroOn ? 0.3 : 0) + (boost ? 0.3 : 0)) * (player.off ? 0.5 : 1);
   let v = player.v;
-  if (up || nitroOn) v += (c.accel * (1 - clamp(v / vmax, 0, 1) * 0.65) + (nitroOn ? 14 : 0)) * dt;
+  if (up || nitroOn || boost) v += (c.accel * (1 - clamp(v / vmax, 0, 1) * 0.65) + (nitroOn ? 14 : 0) + (boost ? 20 : 0)) * dt;
   else if (dn) v = v > 0.5 ? v - 38 * dt : Math.max(v - 11 * dt, -14);
   else v -= Math.sign(v) * Math.min(Math.abs(v), (5 + Math.abs(v) * 0.03) * dt);
   if (v > vmax) v -= (v - vmax) * 2 * dt;
   if (player.off) v -= v * 0.9 * dt;
   if (state === 'done') v -= v * 0.7 * dt;
   player.nitro = nitroOn ? Math.max(0, player.nitro - 32 * dt) : Math.min(100, player.nitro + (ctl ? 7 : 0) * dt);
+  if (player.slipT > 0){   // aceite: el auto patina y no responde al volante
+    player.slipT -= dt; st = 0;
+    player.h += player.slipDir * 2.6 * dt * (player.slipT / 1.1 + 0.25);
+    v -= v * 0.4 * dt;
+  }
   player.steerSm += (st - player.steerSm) * Math.min(1, dt * 9);
   const sp = Math.abs(v), maxTurn = (1.95 - 0.8 * clamp(sp / 72, 0, 1)) * c.grip;
   player.h += player.steerSm * maxTurn * clamp(sp / 8, 0, 1) * Math.sign(v) * dt;
@@ -1235,6 +1459,8 @@ function updateBots(dt){
       const target = b.base * clamp(1 - CORNER[i] * 11, 0.58, 1) * rubber;
       b.v += clamp(target - b.v, -24 * dt, 11 * dt);
       b.dist += b.v * dt;
+      b.padCool = (b.padCool || 0) - dt;
+      if (!b.air && b.padCool <= 0 && OB.pads.some(o => inRect(o, b.dist, b.lane))){ b.v += 9; b.padCool = 1; }
       const want = Math.sin(raceTime * 0.17 + b.phase) * (HALF - 3.5);
       b.lane += (want - b.lane) * Math.min(1, dt * 0.5);
       b.lane = clamp(b.lane, -(HALF - 1.5), HALF - 1.5);
@@ -1251,7 +1477,8 @@ function updateRemotes(dt){
     const k = Math.min(1, dt * 10);
     r.pos.x += (r.tx - r.pos.x) * k; r.pos.z += (r.tz - r.pos.z) * k;
     r.h += wrapA(r.th - r.h) * k;
-    const m = r.mesh; m.position.copy(r.pos); m.rotation.y = r.h;
+    r.y = (r.y || 0) + ((r.ty || 0) - (r.y || 0)) * k;
+    const m = r.mesh; m.position.copy(r.pos); m.position.y = r.y; m.rotation.y = r.h;
     rollWheels(m, r.v * dt);
     m.userData.flames.forEach(f => { f.visible = !!r.nitroOn; f.scale.z = 0.8 + Math.random() * 0.5; });
   });
@@ -1265,6 +1492,7 @@ function move(c, dx, dz){
   if (c.isBot){ c.dist += dx * c.T.x + dz * c.T.z; c.lane = clamp(c.lane + dx * c.Nn.x + dz * c.Nn.z, -(HALF - 1), HALF - 1); }
 }
 function collide(A, B){
+  if (Math.abs((A.y || 0) - (B.y || 0)) > 1) return;   // uno va volando por encima del otro
   const ma = movable(A), mb = movable(B);
   if (!ma && !mb) return;
   const dx = B.pos.x - A.pos.x, dz = B.pos.z - A.pos.z;
@@ -1288,7 +1516,14 @@ function trackPlayer(dt){
   player.idx = nearest(player.pos, player.idx, 40);
   const i = player.idx, P = SP[i], n = NR[i];
   const lat = (player.pos.x - P.x) * n.x + (player.pos.z - P.z) * n.z;
-  player.off = Math.abs(lat) > HALF + CURB;
+  const sAt = i * ds + (player.pos.x - P.x) * TG[i].x + (player.pos.z - P.z) * TG[i].z;
+  player.lat = lat;
+  vertical(player, sAt, lat, dt);
+  player.off = !player.air && Math.abs(lat) > HALF + CURB;
+  if (!player.air && state !== 'menu'){
+    if (player.padCool <= 0 && OB.pads.some(o => inRect(o, sAt, lat))){ player.boostT = 1.5; player.padCool = 0.6; player.v = Math.min(player.v + 9, CARS[player.type].vmax * 1.55); }
+    if (player.oilCool <= 0 && player.v > 10 && OB.oils.some(o => inRect(o, sAt, lat))){ player.slipT = 1.1; player.oilCool = 1.5; player.slipDir = player.steerSm ? -Math.sign(player.steerSm) : (Math.random() < 0.5 ? -1 : 1); }
+  }
   const lim = WALL - 1.1;
   if (Math.abs(lat) > lim){
     const sg = Math.sign(lat), pen = Math.abs(lat) - lim;
@@ -1319,11 +1554,11 @@ function trackPlayer(dt){
 
 function placePlayer(dt){
   const m = player.mesh, u = m.userData, c = CARS[player.type];
-  m.position.copy(player.pos); m.rotation.y = player.h;
+  m.position.copy(player.pos); m.position.y = player.y; m.rotation.y = player.h; m.rotation.x = player.pitch;
   u.chassis.rotation.z = -player.steerSm * 0.06 * clamp(player.v / c.vmax, 0, 1);
   u.chassis.rotation.y = player.steerSm * 0.08 * clamp(player.v / c.vmax, 0, 1);
   rollWheels(m, player.v * dt);
-  u.flames.forEach(f => { f.visible = !!player.nitroOn; f.scale.z = 0.8 + Math.random() * 0.5; });
+  u.flames.forEach(f => { f.visible = !!(player.nitroOn || player.boosting); f.scale.z = 0.8 + Math.random() * 0.5; });
 }
 
 const score = c => c.finished ? 1e7 - c.time : c.dist;
@@ -1413,6 +1648,8 @@ function speedLines(sf, nitro){
 // ---------- Bucle ----------
 const clock = new THREE.Clock();
 function update(dt){
+  updateProps(dt);
+  if (OB.padTex) OB.padTex.offset.y += dt * 1.6;
   if (state === 'menu'){
     attract += dt * 0.12;
     const c = SP[Math.round(25 / ds)];
@@ -1434,9 +1671,11 @@ function update(dt){
     for (let a = 0; a < all.length; a++) for (let b = a + 1; b < all.length; b++) collide(all[a], all[b]);
     bots.forEach(b => {
       if (movable(b)) placeBot(b);
-      b.mesh.position.copy(b.pos); b.mesh.rotation.y = b.h;
+      vertical(b, b.dist, b.lane, dt);
+      b.mesh.position.copy(b.pos); b.mesh.position.y = b.y; b.mesh.rotation.y = b.h; b.mesh.rotation.x = b.pitch;
       rollWheels(b.mesh, b.v * dt);
     });
+    all.forEach(knockProps);
     trackPlayer(dt);
     placePlayer(dt);
     audio.update(engineState());
@@ -1448,12 +1687,14 @@ function update(dt){
     // Cámara baja y cerca del auto; a alta velocidad se aleja un poco y abre el ángulo
     const back = 7.2 + sf * 1.6, high = 2.6 + sf * 0.3;
     const shake = (player.nitroOn ? 0.09 : 0) + sf * 0.025;
-    camera.position.set(player.pos.x - cf * back + (Math.random() - 0.5) * shake, high + (Math.random() - 0.5) * shake, player.pos.z - cz * back);
-    camera.lookAt(player.pos.x + cf * 9, 1.0, player.pos.z + cz * 9);
-    const fovT = 60 + 24 * sf + (player.nitroOn ? 10 : 0);
+    if (player.land > 0) player.land -= dt;
+    const bump = player.land > 0 ? player.land * 1.2 : 0;
+    camera.position.set(player.pos.x - cf * back + (Math.random() - 0.5) * shake, high + player.y * 0.85 - bump + (Math.random() - 0.5) * shake, player.pos.z - cz * back);
+    camera.lookAt(player.pos.x + cf * 9, 1.0 + player.y * 0.7, player.pos.z + cz * 9);
+    const fovT = 60 + 24 * sf + (player.nitroOn || player.boosting ? 10 : 0);
     camera.fov += (fovT - camera.fov) * Math.min(1, dt * 4);
     camera.updateProjectionMatrix();
-    speedLines(state === 'race' ? sf : 0, player.nitroOn);
+    speedLines(state === 'race' ? sf : 0, player.nitroOn || player.boosting);
 
     updateHud();
     if (state === 'done'){
@@ -1664,7 +1905,7 @@ function guestData(m){
 }
 function applyState(r, s){
   if (Math.hypot(s.x - r.pos.x, s.z - r.pos.z) > 30){ r.pos.x = s.x; r.pos.z = s.z; r.h = s.h; }
-  r.tx = s.x; r.tz = s.z; r.th = s.h; r.v = s.v; r.nitroOn = !!s.n;
+  r.tx = s.x; r.tz = s.z; r.th = s.h; r.v = s.v; r.nitroOn = !!s.n; r.ty = s.y || 0;
   r.dist = s.d; r.finished = !!s.f; r.time = s.ft;
 }
 function applySnap(m){
@@ -1679,7 +1920,7 @@ function applySnap(m){
 }
 function myState(){
   const r = n => Math.round(n * 100) / 100;
-  return { t:'st', x:r(player.pos.x), z:r(player.pos.z), h:r(player.h * 10) / 10, v:r(player.v), n:player.nitroOn ? 1 : 0,
+  return { t:'st', x:r(player.pos.x), z:r(player.pos.z), h:r(player.h * 10) / 10, v:r(player.v), n:player.nitroOn || player.boosting ? 1 : 0, y:r(player.y),
     d:r(player.dist), f:player.finished ? 1 : 0, ft:r(player.time || 0) };
 }
 function netTick(){
