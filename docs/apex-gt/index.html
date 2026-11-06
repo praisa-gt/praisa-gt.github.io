@@ -103,6 +103,21 @@ h1{font-family:var(--display);font-weight:900;font-size:clamp(48px,9vw,96px);lin
 .carbtn{padding:12px 6px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);
   font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:.06em;display:flex;flex-direction:column;align-items:center;gap:8px}
 .carbtn i{display:block;width:26px;height:8px;border-radius:3px}
+.only-touch{display:none}
+@media (hover:none) and (pointer:coarse){.only-touch{display:flex}}
+@media (hover:none) and (pointer:coarse) and (orientation:landscape){
+  .speedo{bottom:auto;top:calc(10px + env(safe-area-inset-top,0px));padding:4px 16px 8px;min-width:140px}
+  #spd{font-size:30px}
+}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.segbtn{padding:11px 6px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-family:var(--display);font-weight:800;font-size:11px;letter-spacing:.08em}
+.segbtn[aria-pressed="true"]{border-color:var(--accent);background:rgba(34,211,238,.12);color:var(--accent)}
+#ctrlNote:empty{display:none}
+#hud:not(.tilt) .tilt-only{display:none}
+#hud.tilt .btn-only{display:none}
+.tiltind{position:relative;height:6px;margin-top:8px;border-radius:3px;background:rgba(255,255,255,.1)}
+.tiltind::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.35)}
+.tiltind i{position:absolute;top:-3px;left:50%;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent)}
 .carbtn[aria-pressed="true"]{border-color:var(--accent);background:rgba(34,211,238,.12);color:var(--accent);box-shadow:0 0 18px rgba(34,211,238,.25)}
 .stats{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:rgba(0,0,0,.28)}
 .srow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;font-size:12px;font-weight:700}
@@ -181,17 +196,19 @@ tr.me td:first-child{color:var(--accent)}
     <div id="spd">000</div>
     <div class="unit">KM/H</div>
     <div class="nbar"><div id="nfill"></div></div>
+    <div class="tiltind" id="tiltInd" hidden aria-hidden="true"><i id="tiltDot"></i></div>
   </div>
   <div id="keys" class="panel">
     <kbd>W</kbd>/<kbd>↑</kbd> acelerar · <kbd>S</kbd>/<kbd>↓</kbd> frenar<br>
     <kbd>A D</kbd>/<kbd>← →</kbd> girar · <kbd>Espacio</kbd> nitro · <kbd>P</kbd> pausa
   </div>
   <div class="touch tl">
-    <button class="tb arrow" data-k="left" aria-label="Girar a la izquierda">◀</button>
-    <button class="tb arrow" data-k="right" aria-label="Girar a la derecha">▶</button>
+    <button class="tb arrow btn-only" data-k="left" aria-label="Girar a la izquierda">◀</button>
+    <button class="tb arrow btn-only" data-k="right" aria-label="Girar a la derecha">▶</button>
+    <button class="tb big tilt-only" data-k="down">FRENO</button>
   </div>
   <div class="touch tr">
-    <button class="tb" data-k="down">FRENO</button>
+    <button class="tb btn-only" data-k="down">FRENO</button>
     <div class="tcol">
       <button class="tb nitro" data-k="nitro">NITRO</button>
       <button class="tb big" data-k="up">ACELERAR</button>
@@ -220,6 +237,14 @@ tr.me td:first-child{color:var(--accent)}
       <div class="field">
         <span class="label">Auto</span>
         <div class="cars" id="cars"></div>
+      </div>
+      <div class="field only-touch">
+        <span class="label">Control en celular</span>
+        <div class="seg" role="group" aria-label="Control en celular">
+          <button class="segbtn" id="ctrlBtns" aria-pressed="true">BOTONES</button>
+          <button class="segbtn" id="ctrlTilt" aria-pressed="false">INCLINAR</button>
+        </div>
+        <p class="status" id="ctrlNote" role="status"></p>
       </div>
       <div class="stats">
         <div class="srow"><span>Velocidad máxima</span><span id="sVel"></span><div class="sbar"><div id="bVel"></div></div></div>
@@ -999,7 +1024,7 @@ function placeBot(b){
 // ---------- Física ----------
 function updatePlayer(dt){
   const c = CARS[player.type], ctl = state === 'race';
-  let st = ctl ? (input.left - input.right) : 0;
+  let st = ctl ? (input.left || input.right ? input.left - input.right : (tiltOn() ? tilt.steer : 0)) : 0;
   if (state === 'done'){
     const i = player.idx, lat = (player.pos.x - SP[i].x) * NR[i].x + (player.pos.z - SP[i].z) * NR[i].z;
     st = clamp(wrapA(TH[i] - player.h) * 2 + lat * 0.04, -1, 1);
@@ -1176,6 +1201,7 @@ function updateHud(){
   hud.best.textContent = fmt(player.best);
   hud.spd.textContent = String(Math.round(Math.abs(player.v) * 3.6)).padStart(3, '0');
   hud.nitro.style.width = player.nitro.toFixed(1) + '%';
+  if (tilt.mode === 'tilt') $('tiltDot').style.left = (50 - tilt.steer * 46).toFixed(1) + '%';
   const i = player.idx, fwdDot = Math.sin(player.h) * TG[i].x + Math.cos(player.h) * TG[i].z;
   hud.wrong.hidden = !(state === 'race' && fwdDot < -0.3 && Math.abs(player.v) > 3);
   drawMini();
@@ -1314,7 +1340,7 @@ function beginRace(list){
   buildCars(list);
   resetRace();
   hideAll(); $('hud').hidden = false;
-  paused = false; state = 'count'; countT = 3.999;
+  paused = false; state = 'count'; countT = 3.999; tiltCalibrate();
   Object.keys(input).forEach(k => input[k] = 0);
   clearInterval(net.timer); net.timer = net.mode === 'solo' ? null : setInterval(netTick, 50);
   canvas.focus();
@@ -1338,7 +1364,7 @@ function setPause(on){
   $('pause').querySelector('.btnrow').style.gridTemplateColumns = net.mode === 'solo' ? '' : '1fr';
   $('quitBtn').textContent = net.mode === 'solo' ? 'SALIR AL MENÚ' : 'SALIR DE LA SALA';
   Object.keys(input).forEach(k => input[k] = 0);
-  if (on) $('resumeBtn').focus(); else canvas.focus();
+  if (on) $('resumeBtn').focus(); else { tiltCalibrate(); canvas.focus(); }
 }
 
 // ---------- Sala en línea ----------
@@ -1608,6 +1634,76 @@ function paintSoundBtn(){ $('soundBtn').classList.toggle('off', audio.muted); $(
 $('soundBtn').onclick = () => { audio.toggle(); paintSoundBtn(); canvas.focus(); };
 addEventListener('keydown', e => { if (e.code === 'KeyM' && !(e.target && e.target.tagName === 'INPUT')) { audio.toggle(); paintSoundBtn(); } });
 paintSoundBtn();
+
+// ---------- Control por inclinación (celular) ----------
+// Lee la gravedad del celular y la proyecta sobre el eje horizontal de la pantalla:
+// funciona sosteniéndolo vertical, inclinado o casi acostado, en horizontal o vertical.
+const tilt = { mode: store.get('apexgt-ctrl') === 'tilt' ? 'tilt' : 'buttons', s: null, center: 0, steer: 0, seen: false, listening: false };
+const TILT_MAX = Math.sin(24 * Math.PI / 180);   // inclinar 24° = giro completo
+function screenAngle(){
+  const a = screen.orientation && typeof screen.orientation.angle === 'number' ? screen.orientation.angle : (window.orientation || 0);
+  return a * Math.PI / 180;
+}
+function onOrientation(e){
+  if (e.beta == null || e.gamma == null) return;
+  const b = e.beta * Math.PI / 180, g = e.gamma * Math.PI / 180, a = screenAngle();
+  // Vector "abajo" en ejes del celular, proyectado al eje derecho de la pantalla
+  tilt.s = Math.cos(b) * Math.sin(g) * Math.cos(a) + Math.sin(b) * Math.sin(a);
+  tilt.seen = true;
+  tiltSteer();
+}
+function tiltSteer(){
+  if (tilt.s == null) return;
+  const x = (tilt.s - tilt.center) / TILT_MAX, dz = 0.06;
+  const m = Math.max(0, Math.abs(x) - dz) / (1 - dz);
+  tilt.steer = -Math.sign(x) * Math.min(1, Math.pow(m, 1.25));   // positivo = izquierda
+}
+function tiltListen(){
+  if (tilt.listening) return;
+  tilt.listening = true;
+  addEventListener('deviceorientation', onOrientation);
+}
+function tiltCalibrate(){ if (tilt.s != null){ tilt.center = tilt.s; tiltSteer(); } }
+const tiltOn = () => tilt.mode === 'tilt' && tilt.seen;
+function setCtrlNote(msg, kind){ const el = $('ctrlNote'); el.textContent = msg || ''; el.className = 'status' + (kind ? ' ' + kind : ''); }
+function paintCtrl(){
+  $('ctrlBtns').setAttribute('aria-pressed', String(tilt.mode === 'buttons'));
+  $('ctrlTilt').setAttribute('aria-pressed', String(tilt.mode === 'tilt'));
+  $('hud').classList.toggle('tilt', tilt.mode === 'tilt');
+  $('tiltInd').hidden = tilt.mode !== 'tilt';
+}
+async function setCtrl(mode){
+  if (mode === 'tilt'){
+    // iPhone pide permiso, y solo se puede pedir al tocar un botón
+    const DOE = window.DeviceOrientationEvent;
+    if (!DOE){ setCtrlNote('Este celular no permite control por inclinación.', 'err'); return; }
+    if (typeof DOE.requestPermission === 'function'){
+      try {
+        if (await DOE.requestPermission() !== 'granted'){ setCtrlNote('Sin permiso de movimiento. Actívalo en el aviso del navegador para usar la inclinación.', 'err'); return; }
+      } catch(e){ setCtrlNote('No se pudo pedir el permiso de movimiento. Intenta de nuevo.', 'err'); return; }
+    }
+    tiltListen();
+    tilt.mode = 'tilt'; store.set('apexgt-ctrl', 'tilt'); paintCtrl();
+    setCtrlNote('Sostén el celular en horizontal y gíralo como un volante. Se centra solo al arrancar.', 'ok');
+    setTimeout(() => {
+      if (tilt.mode === 'tilt' && !tilt.seen){
+        tilt.mode = 'buttons'; store.set('apexgt-ctrl', 'buttons'); paintCtrl();
+        setCtrlNote('Tu celular no está enviando la inclinación. Seguimos con botones.', 'err');
+      }
+    }, 2000);
+  } else {
+    tilt.mode = 'buttons'; store.set('apexgt-ctrl', 'buttons'); paintCtrl(); setCtrlNote('');
+  }
+}
+$('ctrlBtns').onclick = () => setCtrl('buttons');
+$('ctrlTilt').onclick = () => setCtrl('tilt');
+// En Android no hace falta permiso: si ya estaba elegido, se activa de una vez
+if (tilt.mode === 'tilt'){
+  if (typeof (window.DeviceOrientationEvent || {}).requestPermission === 'function'){
+    tilt.mode = 'buttons'; setCtrlNote('Toca INCLINAR para volver a activar el control por inclinación.');
+  } else tiltListen();
+}
+paintCtrl();
 
 // ---------- Arranque ----------
 renderCarPicker();
