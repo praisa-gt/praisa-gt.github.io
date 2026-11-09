@@ -2204,10 +2204,22 @@ detectServer();
 function wsConn(ws, id){
   return { peer:id, get open(){ return ws.readyState === 1; }, send(d){ if (ws.readyState === 1) ws.send(JSON.stringify({ t:'data', to:id, d })); }, close(){} };
 }
+// En el plan gratis de Render el servidor se duerme; esta consulta lo despierta (hasta ~1 min)
+async function wakeServer(){
+  const base = NET_WS.replace(/^ws/, 'http').replace(/\/ws(\?.*)?$/, '');
+  const slow = setTimeout(() => setStatus('Despertando el servidor de salas… puede tardar hasta un minuto la primera vez.'), 1500);
+  try {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 75000);
+    const r = await fetch(base + '/health', { signal:ctl.signal, cache:'no-store' }); clearTimeout(t);
+    return r.ok;
+  } catch(e){ return false; } finally { clearTimeout(slow); }
+}
 function wsOpen(code, role){ return new WebSocket(NET_WS + (NET_WS.includes('?') ? '&' : '?') + 'room=' + code + '&role=' + role); }
 const WS_ERRORS = { notfound:'peer-unavailable', full:'full', taken:'taken' };
-function createRoomWS(retry){
+async function createRoomWS(retry){
   closeNet(); saveProfile();
+  setStatus('Conectando con el servidor de salas…');
+  if (!(await wakeServer())) return setStatus('No pude conectar con el servidor de salas. Intenta de nuevo en un momento.', 'err');
   net.mode = 'host';
   net.code = Array.from({ length:4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
   setStatus('Creando sala…');
@@ -2224,8 +2236,10 @@ function createRoomWS(retry){
   };
   ws.onclose = () => { if (net.ws === ws) netFail({ type:'server' }); };
 }
-function joinRoomWS(code){
+async function joinRoomWS(code){
   closeNet(); saveProfile();
+  setStatus('Conectando con el servidor de salas…');
+  if (!(await wakeServer())) return setStatus('No pude conectar con el servidor de salas. Intenta de nuevo en un momento.', 'err');
   net.mode = 'guest'; net.code = code;
   setStatus('Conectando a la sala ' + code + '…');
   const ws = wsOpen(code, 'guest'); net.ws = ws;
