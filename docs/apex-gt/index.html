@@ -1613,7 +1613,7 @@ const hex = n => '#' + n.toString(16).padStart(6, '0');
 
 // ---------- Red (PeerJS) ----------
 const PREFIX = 'apexgt-v1-', CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', MAX_HUMANS = 4;
-const net = { mode:'solo', peer:null, conns:new Map(), host:null, myId:'local', code:'', lobby:[], states:new Map(), timer:null, seen:new Map(), lastSnap:0 };
+const net = { mode:'solo', peer:null, ws:null, conns:new Map(), host:null, myId:'local', code:'', lobby:[], states:new Map(), timer:null, seen:new Map(), lastSnap:0 };
 const NET_TIMEOUT = 10000;
 
 function buildCars(list){
@@ -2068,11 +2068,12 @@ function setPause(on){
 // ---------- Sala en línea ----------
 function setStatus(msg, kind){ const el = $('netStatus'); el.textContent = msg || ''; el.className = 'status' + (kind ? ' ' + kind : ''); }
 function closeNet(){
-  const p = net.peer;
+  const p = net.peer, ws = net.ws;
   clearInterval(net.timer);
-  Object.assign(net, { mode:'solo', peer:null, host:null, myId:'local', code:'', lobby:[], timer:null });
+  Object.assign(net, { mode:'solo', peer:null, ws:null, host:null, myId:'local', code:'', lobby:[], timer:null });
   net.conns = new Map(); net.states = new Map(); net.seen = new Map();
   try { if (p) p.destroy(); } catch(e){}
+  try { if (ws){ if (ws.readyState === 1) ws.send(JSON.stringify({ t:'bye' })); ws.close(); } } catch(e){}
 }
 function peerReady(){
   if (typeof Peer === 'undefined'){ setStatus('No se pudo cargar PeerJS. Revisa tu conexión a internet y recarga la página.', 'err'); return false; }
@@ -2081,10 +2082,12 @@ function peerReady(){
 const NET_ERRORS = {
   'peer-unavailable': c => 'No encontré la sala ' + c + '. Revisa el código o pide uno nuevo.',
   'full': () => 'La sala está llena (máximo 4 pilotos).',
-  'busy': () => 'Esa sala ya está corriendo. Espera a que termine la carrera e intenta de nuevo.',
+  'busy': () => 'Esa sala está en plena carrera. Intenta de nuevo cuando lleguen a la meta.',
   'timeout': () => 'La sala no respondió. Revisa tu conexión e intenta de nuevo.',
   'browser-incompatible': () => 'Este navegador no permite juego en línea. Prueba con Chrome, Edge o Firefox.',
   'lost': () => 'Se perdió la conexión con el anfitrión.',
+  'hostgone': () => 'El anfitrión cerró la sala.',
+  'server': () => 'Se cortó la conexión con el servidor de salas. Intenta de nuevo en un momento.',
 };
 function netFail(e){
   const type = e && e.type || 'unknown', code = net.code;
@@ -2096,6 +2099,7 @@ function broadcast(m){ net.conns.forEach(c => { if (c.open) try { c.send(m); } c
 function broadcastLobby(){ broadcast({ t:'lobby', players:net.lobby, code:net.code, track:trackId, laps:LAPS }); }
 
 function createRoom(retry){
+  if (NET_WS) return createRoomWS(retry);
   if (!peerReady()) return;
   closeNet(); saveProfile();
   net.mode = 'host';
@@ -2124,12 +2128,12 @@ function hostData(conn, m){
   net.seen.set(conn.peer, performance.now());
   if (m.t === 'hello'){
     const reject = t => { try { conn.send({ t }); } catch(e){} setTimeout(() => conn.close(), 400); };
-    if (state !== 'menu') return reject('busy');
+    if (state === 'count' || state === 'race') return reject('busy');   // en resultados sí se puede entrar
     if (net.lobby.length >= MAX_HUMANS) return reject('full');
     const name = String(m.name || 'PILOTO').toUpperCase().slice(0, 14), car = CARS[m.car] ? m.car : 'interceptor';
     net.conns.set(conn.peer, conn);
     net.lobby = net.lobby.filter(p => p.id !== conn.peer).concat({ id:conn.peer, name, car });
-    broadcastLobby(); showLobby();
+    broadcastLobby(); if (state === 'menu') showLobby();
     toast(name + ' entró a la sala');
   } else if (m.t === 'st'){
     if (!net.conns.has(conn.peer)) return;
@@ -2160,6 +2164,7 @@ function joinRoom(){
   const code = $('code').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   $('code').value = code;
   if (code.length !== 4){ setStatus('Escribe el código de 4 caracteres que te pasó el anfitrión.', 'err'); $('code').focus(); return; }
+  if (NET_WS) return joinRoomWS(code);
   if (!peerReady()) return;
   closeNet(); saveProfile();
   net.mode = 'guest'; net.code = code;
@@ -2176,6 +2181,69 @@ function joinRoom(){
   });
   peer.on('error', e => { clearTimeout(to); if (net.peer === peer) netFail(e); });
 }
+// ---------- Salas por servidor propio (WebSocket) ----------
+// Si hay un servidor de salas disponible, los mensajes pasan por él en vez de ir directo
+// entre navegadores: no le afectan las redes de empresa ni los datos móviles.
+// Orden: ?net=wss://... en el enlace → NET_SERVER → el mismo sitio, si responde /health → PeerJS.
+const NET_SERVER = '';   // ej. 'wss://apex-gt.onrender.com/ws' cuando el servidor esté publicado
+let NET_WS = null;
+async function detectServer(){
+  const q = new URLSearchParams(location.search).get('net');
+  if (q){ NET_WS = /\/ws$/.test(q) ? q : q.replace(/\/$/, '') + '/ws'; return; }
+  if (NET_SERVER){ NET_WS = NET_SERVER; return; }
+  if (!/^https?:$/.test(location.protocol)) return;
+  try {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch(new URL('/health', location.href), { signal:ctl.signal, cache:'no-store' }); clearTimeout(t);
+    const j = r.ok ? await r.json() : null;
+    if (j && j.ok) NET_WS = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+  } catch(e){}
+}
+detectServer();
+// Imita una conexión de PeerJS para reutilizar la lógica de la sala
+function wsConn(ws, id){
+  return { peer:id, get open(){ return ws.readyState === 1; }, send(d){ if (ws.readyState === 1) ws.send(JSON.stringify({ t:'data', to:id, d })); }, close(){} };
+}
+function wsOpen(code, role){ return new WebSocket(NET_WS + (NET_WS.includes('?') ? '&' : '?') + 'room=' + code + '&role=' + role); }
+const WS_ERRORS = { notfound:'peer-unavailable', full:'full', taken:'taken' };
+function createRoomWS(retry){
+  closeNet(); saveProfile();
+  net.mode = 'host';
+  net.code = Array.from({ length:4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
+  setStatus('Creando sala…');
+  const ws = wsOpen(net.code, 'host'); net.ws = ws;
+  const pending = new Map();
+  ws.onmessage = e => {
+    if (net.ws !== ws) return;
+    let m; try { m = JSON.parse(e.data); } catch(_){ return; }
+    if (m.t === 'ready'){ net.myId = m.id; net.lobby = [{ id:m.id, name:myName(), car:selected }]; setStatus(''); showLobby(); }
+    else if (m.t === 'join') pending.set(m.id, wsConn(ws, m.id));
+    else if (m.t === 'data'){ const c = net.conns.get(m.from) || pending.get(m.from) || wsConn(ws, m.from); hostData(c, m.d); }
+    else if (m.t === 'leave'){ pending.delete(m.id); hostDrop(m.id); }
+    else if (m.t === 'error'){ if (m.reason === 'taken' && (retry || 0) < 3) createRoomWS((retry || 0) + 1); else netFail({ type:WS_ERRORS[m.reason] || m.reason }); }
+  };
+  ws.onclose = () => { if (net.ws === ws) netFail({ type:'server' }); };
+}
+function joinRoomWS(code){
+  closeNet(); saveProfile();
+  net.mode = 'guest'; net.code = code;
+  setStatus('Conectando a la sala ' + code + '…');
+  const ws = wsOpen(code, 'guest'); net.ws = ws;
+  const to = setTimeout(() => { if (net.ws === ws && !net.host) netFail({ type:'timeout' }); }, 12000);
+  ws.onmessage = e => {
+    if (net.ws !== ws) return;
+    let m; try { m = JSON.parse(e.data); } catch(_){ return; }
+    if (m.t === 'ready'){
+      clearTimeout(to); net.myId = m.id; net.host = wsConn(ws, m.host);
+      net.host.send({ t:'hello', name:myName(), car:selected }); setStatus('Conectado. Esperando al anfitrión…', 'ok');
+    }
+    else if (m.t === 'data'){ if (net.host && m.from === net.host.peer) guestData(m.d); }
+    else if (m.t === 'hostgone') netFail({ type:'hostgone' });
+    else if (m.t === 'error'){ clearTimeout(to); netFail({ type:WS_ERRORS[m.reason] || m.reason }); }
+  };
+  ws.onclose = () => { clearTimeout(to); if (net.ws === ws) netFail({ type:'lost' }); };
+}
+
 function guestData(m){
   if (!m || typeof m !== 'object' || net.mode !== 'guest') return;
   switch (m.t){
