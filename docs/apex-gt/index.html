@@ -1595,7 +1595,7 @@ function nameTag(text){
   x.font = '800 28px Orbitron, Inter, sans-serif'; x.fillStyle = '#eaf2ff'; x.textAlign = 'center'; x.textBaseline = 'middle';
   x.fillText(text, 128, 31, 228);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(c), depthTest:false, transparent:true }));
-  s.scale.set(4.4, 1.1, 1); s.position.y = 2.7; s.renderOrder = 10;
+  s.scale.set(2.6, 0.65, 1); s.position.y = 2.2; s.renderOrder = 10;
   return s;
 }
 
@@ -1619,9 +1619,14 @@ const NET_TIMEOUT = 10000;
 function buildCars(list){
   all.forEach(c => scene.remove(c.mesh));
   humans = list; player = null; remotes = new Map(); all = [];
+  // Si dos jugadores eligen el mismo auto, el segundo sale de otro color
+  const ALT = [0xf43f5e, 0x22d3ee, 0xfacc15, 0xa855f7], used = [];
   list.forEach(h => {
     const me = h.id === net.myId, type = CARS[h.car] ? h.car : 'rookie';
-    const c = { id:h.id, isPlayer:me, isRemote:!me, type, name:h.name, mesh:makeCar(CARS[type].color), pos:new THREE.Vector3(),
+    let paint = CARS[type].color;
+    if (used.includes(paint)) paint = ALT.find(c => !used.includes(c));
+    used.push(paint);
+    const c = { id:h.id, isPlayer:me, isRemote:!me, type, name:h.name, mesh:makeCar(paint), pos:new THREE.Vector3(),
       h:0, v:0, steerSm:0, nitro:100, dist:0, finished:false, time:0, laps:0, best:Infinity };
     if (me) player = c; else { c.mesh.add(nameTag(h.name)); remotes.set(h.id, c); }
     all.push(c);
