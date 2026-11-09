@@ -2185,7 +2185,7 @@ function joinRoom(){
 // Si hay un servidor de salas disponible, los mensajes pasan por él en vez de ir directo
 // entre navegadores: no le afectan las redes de empresa ni los datos móviles.
 // Orden: ?net=wss://... en el enlace → NET_SERVER → el mismo sitio, si responde /health → PeerJS.
-const NET_SERVER = '';   // ej. 'wss://apex-gt.onrender.com/ws' cuando el servidor esté publicado
+const NET_SERVER = 'wss://apex-gt-salas.onrender.com/ws';   // servidor de salas en Render (se puede cambiar con ?net=)
 let NET_WS = null;
 async function detectServer(){
   const q = new URLSearchParams(location.search).get('net');
