@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#D71920">
+<title>Participe en el sorteo · Praisa</title>
+<style>
+:root{--red:#D71920;--ink:#262626;--mut:#666;--line:#d5d9de;--soft:#FDF1F1}
+*{box-sizing:border-box}
+body{margin:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;color:var(--ink)}
+.card{max-width:560px;margin:0 auto;background:#fff;min-height:100vh;padding:28px 24px 40px;border-top:6px solid var(--red)}
+@media(min-width:600px){.card{margin:32px auto;min-height:0;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.08);padding:36px 40px 44px}}
+.logo{width:170px;display:block;margin-bottom:18px}
+h1{font-size:26px;margin:0 0 6px}
+.sub{color:var(--mut);margin:0 0 18px;line-height:1.5}
+.promo{background:var(--soft);border:1px solid #f3c7c9;border-radius:8px;padding:12px 14px;margin-bottom:22px;line-height:1.45}
+.promo b{color:var(--red)}
+label{display:block;font-weight:bold;font-size:14px;margin:14px 0 6px}
+label em{color:var(--red);font-style:normal}
+label small{font-weight:normal;color:var(--mut)}
+input,textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:#f8f9fb}
+input:focus,textarea:focus{outline:2px solid #f3c7c9;border-color:var(--red);background:#fff}
+textarea{height:80px;resize:vertical}
+.row{display:flex;gap:12px}.row>div{flex:1}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:20px 0 6px;font-size:14px;line-height:1.4;cursor:pointer}
+.chk input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--red)}
+.trap{position:absolute;left:-9999px;height:0;overflow:hidden}
+button{width:100%;margin-top:18px;background:var(--red);color:#fff;border:0;border-radius:6px;font:bold 18px Arial,sans-serif;padding:15px;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}
+.err{color:var(--red);font-size:14px;margin-top:12px;min-height:18px}
+.legal{color:#888;font-size:12px;margin-top:16px;line-height:1.5}
+#ok{display:none;text-align:center}
+.check{width:64px;height:64px;border-radius:50%;background:#e8f5e9;color:#2e7d32;font-size:36px;line-height:64px;margin:6px auto 12px}
+.code.off{color:#999;border-color:#bbb;text-decoration:line-through}
+.check.off{background:#f3f3f3;color:#777}
+.code{display:inline-block;border:2px dashed var(--red);color:var(--red);font-weight:bold;font-size:30px;letter-spacing:4px;padding:12px 26px;border-radius:8px;margin:12px 0 16px}
+#ok p{line-height:1.6;color:#444}
+.contact{font-size:14px;color:var(--mut);margin-top:18px;line-height:1.8}
+.contact a{color:var(--red);text-decoration:none}
+.barra{display:none;margin:0 0 22px}
+.barra .t{font-size:14px;font-weight:bold;margin-bottom:6px}
+.barra .riel{height:14px;background:#f1f1f1;border:1px solid #e3e3e3;border-radius:8px;overflow:hidden}
+.barra .llena{height:100%;width:3%;background:linear-gradient(90deg,#f0646a,var(--red));border-radius:8px;transition:width 1.2s ease}
+.barra .n{font-size:13px;color:var(--mut);margin-top:6px;line-height:1.4}
+</style>
+</head>
+<body>
+<main class="card">
+  <img class="logo" src="../assets/logo-praisa-email.png" alt="Praisa · Proveedores y Asesores Industriales, S.A.">
+
+  <form id="form" novalidate>
+    <h1>¿Quiere ganarse una tableta?</h1>
+    <p class="sub">Actualice sus datos en un minuto y participe en el sorteo. Cada empresa participa una vez, sin importar cuántas personas se registren.</p>
+    <div class="barra" id="barraForm"><div class="t">Avance del sorteo</div><div class="riel"><div class="llena"></div></div><div class="n">Cuando la barra se llene, hacemos el sorteo.</div></div>
+
+    <div class="row">
+      <div><label for="nombre">Nombre <em>*</em></label><input id="nombre" name="nombre" autocomplete="given-name" required></div>
+      <div><label for="apellido">Apellido <em>*</em></label><input id="apellido" name="apellido" autocomplete="family-name" required></div>
+    </div>
+    <label for="empresa">Empresa <em>*</em></label><input id="empresa" name="empresa" autocomplete="organization" required>
+    <label for="nit">NIT de la empresa <em>*</em></label><input id="nit" name="nit" inputmode="text" autocomplete="off" placeholder="Ej: 1234567-8" required>
+    <label for="puesto">Puesto / cargo <em>*</em></label><input id="puesto" name="puesto" autocomplete="organization-title" required>
+    <label for="correo">Correo electrónico <em>*</em></label><input id="correo" name="correo" type="email" autocomplete="email" required>
+    <label for="telefono">Teléfono o WhatsApp <em>*</em></label><input id="telefono" name="telefono" type="tel" autocomplete="tel" required>
+    <label for="direccion">Dirección / ciudad <em>*</em></label><input id="direccion" name="direccion" autocomplete="address-level2" required>
+    <label for="necesidad">¿Tiene alguna necesidad o proyecto próximo?</label><textarea id="necesidad" name="necesidad"></textarea>
+    <div class="trap" aria-hidden="true"><label>Sitio web<input name="sitio_web" tabindex="-1" autocomplete="off"></label></div>
+
+    <label class="chk"><input type="checkbox" id="acepta" name="acepta"> <span>Acepto recibir información y promociones de Praisa <em style="color:var(--red)">*</em></span></label>
+
+    <button type="submit" id="btn">Enviar y participar</button>
+    <div class="err" id="err" aria-live="polite"></div>
+    <p class="legal">Sus datos se usan únicamente para atenderle y enviarle información de Praisa. Puede darse de baja cuando lo desee. Aplican términos y condiciones del sorteo.</p>
+  </form>
+
+  <section id="ok" aria-live="polite">
+    <div class="check">✓</div>
+    <h1>¡Gracias, <span id="okNombre"></span>!</h1>
+    <p id="okTexto"></p>
+    <p style="font-size:14px">¿Alguien más de su planta, de compras o mantenimiento, debería recibir nuestras cotizaciones y catálogos? <b>Compártale este enlace</b> para que también actualice sus datos.</p>
+    <div class="barra" id="barraOk" style="text-align:left"><div class="t">Avance del sorteo</div><div class="riel"><div class="llena"></div></div><div class="n">Cuando la barra se llene, hacemos el sorteo.</div></div>
+    <div class="contact">✉️ <a href="mailto:ventas@praisa.com">ventas@praisa.com</a> · 🌐 <a href="https://www.praisa.com">www.praisa.com</a></div>
+  </section>
+</main>
+
+<script>
+const ENDPOINT = 'https://serious-porpoise.pikapod.net/webhook/praisa-sorteo-registro';
+const AVANCE = 'https://serious-porpoise.pikapod.net/webhook/praisa-sorteo-avance';
+const form = document.getElementById('form');
+const btn = document.getElementById('btn');
+const err = document.getElementById('err');
+const params = new URLSearchParams(location.search);
+const origen = params.get('o') || 'sorteo';
+const TXT_BOTON = 'Enviar y participar';
+const NOMBRES = { nombre:'nombre', apellido:'apellido', empresa:'empresa', nit:'NIT de la empresa (use el NIT de la empresa, no CF)', direccion:'dirección / ciudad', puesto:'puesto', correo:'correo', 'teléfono':'teléfono', 'aceptación':'aceptar recibir información' };
+
+// Barra del sorteo: solo se llena, sin mostrar cifras.
+async function pintarAvance() {
+  try {
+    const r = await fetch(AVANCE, { cache: 'no-store' });
+    const a = await r.json();
+    const pct = Math.max(3, Math.min(100, Math.round((Number(a.avance) || 0) * 100)));
+    document.querySelectorAll('.barra').forEach(b => {
+      b.style.display = 'block';
+      requestAnimationFrame(() => { b.querySelector('.llena').style.width = pct + '%'; });
+    });
+  } catch (e) { /* si falla, el formulario funciona igual sin barra */ }
+}
+pintarAvance();
+
+function nitValido(v) {
+  const t = (v || '').toUpperCase().replace(/[\s-]/g, '');
+  if (!/^\d{2,}[0-9K]$/.test(t)) return false;
+  const cuerpo = t.slice(0, -1), dv = t.slice(-1);
+  let suma = 0;
+  for (let i = 0; i < cuerpo.length; i++) suma += Number(cuerpo[cuerpo.length - 1 - i]) * (i + 2);
+  const r = (11 - (suma % 11)) % 11;
+  return dv === (r === 10 ? 'K' : String(r));
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  err.textContent = '';
+  const f = Object.fromEntries(new FormData(form));
+  f.acepta = document.getElementById('acepta').checked;
+  f.origen = origen;
+
+  const faltan = [];
+  for (const k of ['nombre','apellido','empresa','direccion','puesto']) if (!(f[k] || '').trim()) faltan.push(k);
+  if (!nitValido(f.nit)) faltan.push('nit');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((f.correo || '').trim())) faltan.push('correo');
+  if ((f.telefono || '').replace(/\D/g, '').length < 8) faltan.push('teléfono');
+  if (!f.acepta) faltan.push('aceptación');
+  if (faltan.length) { err.textContent = 'Revise: ' + faltan.map(x => NOMBRES[x] || x).join(', ') + '.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const r = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(f) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) {
+      if (data.faltan && data.faltan.length) err.textContent = 'Revise: ' + data.faltan.map(x => NOMBRES[x] || x).join(', ') + '.';
+      else throw new Error('respuesta');
+      return;
+    }
+    document.getElementById('okNombre').textContent = data.nombre || f.nombre;
+    document.getElementById('okTexto').innerHTML = data.yaRegistrado
+      ? 'Usted ya estaba registrado en el sorteo.<br>Sus datos ya los tenemos; no necesita hacer nada más.'
+      : 'Sus datos fueron registrados.<br>' + (data.empresaYaParticipa ? 'Su empresa ya está participando en el sorteo de la tableta.' : '¡Su empresa ya está participando en el sorteo de la tableta!');
+    form.style.display = 'none';
+    document.getElementById('ok').style.display = 'block';
+    window.scrollTo(0, 0);
+    pintarAvance();
+  } catch (x) {
+    err.textContent = 'No pudimos enviar sus datos. Intente de nuevo en un momento o escríbanos a ventas@praisa.com.';
+  } finally {
+    btn.disabled = false; btn.textContent = TXT_BOTON;
+  }
+});
+</script>
+</body>
+</html>
